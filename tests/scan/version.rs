@@ -37,7 +37,8 @@ fn rules_lists_only_the_rules_this_build_implements() -> TestResult {
     let run = customs(&fixtures(), &["rules"])?;
     assert_eq!(run.code, 0);
     for id in [
-        "C001", "C002", "C003", "C101", "C102", "C103", "C104", "C105",
+        "C001", "C002", "C003", "C004", "C101", "C102", "C103", "C104", "C105", "C201", "C202",
+        "C203", "C204", "C205", "C206", "C207",
     ] {
         assert!(
             run.stdout.contains(id),
@@ -45,7 +46,7 @@ fn rules_lists_only_the_rules_this_build_implements() -> TestResult {
             run.stdout
         );
     }
-    for id in ["C004", "C005", "C201", "C301", "C401"] {
+    for id in ["C005", "C301", "C304", "C401", "C403"] {
         assert!(!run.stdout.contains(id), "{id} listed but not built");
     }
     Ok(())

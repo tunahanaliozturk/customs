@@ -1,1 +1,6 @@
-<Project />
+<Project>
+  <!-- A fixture: the command only prints text. -->
+  <Target Name="ContosoFetch" BeforeTargets="Build">
+    <Exec Command="echo fixture, would fetch https://example.invalid/tool" />
+  </Target>
+</Project>

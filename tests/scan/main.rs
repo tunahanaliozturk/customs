@@ -5,4 +5,5 @@ mod common;
 mod exit;
 mod golden;
 mod layout;
+mod msbuild;
 mod version;

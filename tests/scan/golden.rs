@@ -30,7 +30,8 @@ fn a_lock_file_of_version_1() -> TestResult {
             "--packages-dir",
             "packages",
         ],
-        0,
+        // Contoso.Build.Tools runs Exec from an imported file: warnings.
+        1,
     )
 }
 
@@ -68,7 +69,7 @@ fn an_assets_file_of_version_3() -> TestResult {
 
 #[test]
 fn a_global_packages_folder_on_its_own() -> TestResult {
-    both_formats("packages-dir", &["scan", "--packages-dir", "packages"], 0)
+    both_formats("packages-dir", &["scan", "--packages-dir", "packages"], 1)
 }
 
 #[test]
@@ -97,7 +98,7 @@ fn a_single_nupkg_gives_the_same_inventory_as_its_extracted_folder() -> TestResu
     let dir = temp_file("contoso.build.tools.3.2.0.nupkg", &zip(&refs)?)?;
 
     let text = customs(dir.path(), &["scan", "contoso.build.tools.3.2.0.nupkg"])?;
-    assert_eq!(text.code, 0, "{}", text.stderr);
+    assert_eq!(text.code, 1, "{}", text.stderr);
     golden("nupkg.txt", &text.stdout)?;
     let json = customs(
         dir.path(),
@@ -140,7 +141,7 @@ fn a_directory_is_searched_for_graph_files() -> TestResult {
             "packages",
         ],
     )?;
-    assert_eq!(by_dir.code, 0, "{}", by_dir.stderr);
+    assert_eq!(by_dir.code, 1, "{}", by_dir.stderr);
     assert_eq!(by_dir.stdout, by_file.stdout);
     Ok(())
 }
