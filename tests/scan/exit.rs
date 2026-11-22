@@ -228,6 +228,25 @@ fn a_clean_scan_with_fail_on_note_exits_1_for_inventory_notes() -> TestResult {
 }
 
 #[test]
+fn a_doubled_slash_in_an_entry_name_is_read_as_nuget_extracts_it() -> TestResult {
+    // A published package names its analyzers this way, and NuGet extracts
+    // them to analyzers/cs/. Refusing the name would hide the analyzer.
+    let archive = zip(&[("analyzers/cs//Contoso.Doubled.dll", b"MZ")])?;
+    let dir = temp_file("contoso.doubled.1.0.0.nupkg", &archive)?;
+    let report = customs(
+        dir.path(),
+        &["scan", "contoso.doubled.1.0.0.nupkg", "--format", "json"],
+    )?
+    .json()?;
+    assert!(findings(&report, "C003").is_empty(), "{report}");
+    assert_eq!(
+        findings(&report, "C102")[0]["path"],
+        "analyzers/cs/Contoso.Doubled.dll"
+    );
+    Ok(())
+}
+
+#[test]
 fn two_entries_equal_ignoring_case_are_c003() -> TestResult {
     let archive = zip(&[
         ("build/Contoso.Twins.targets", b"<Project />"),

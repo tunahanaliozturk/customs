@@ -90,8 +90,10 @@ impl Budget {
 }
 
 /// A path inside a package, with `/` separators, checked once: not empty,
-/// not absolute, no drive letter, no `..`, `.` or empty segment, and within
-/// the path limits.
+/// not absolute, no drive letter, no `..`, and within the path limits. Empty
+/// and `.` segments are dropped, as they are when `NuGet` extracts the
+/// package: a published package has entries named `analyzers/cs//A.dll`,
+/// which land on disk as `analyzers/cs/A.dll`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct PackagePath(String);
 
@@ -119,8 +121,13 @@ impl PackagePath {
         if name.split('/').any(|s| s == "..") {
             return Err(PathProblem::Unsafe("leaves the package through `..`"));
         }
-        if name.split('/').any(|s| s.is_empty() || s == ".") {
-            return Err(PathProblem::Unsafe("has an empty or `.` segment"));
+        let name = name
+            .split('/')
+            .filter(|s| !s.is_empty() && *s != ".")
+            .collect::<Vec<_>>()
+            .join("/");
+        if name.is_empty() {
+            return Err(PathProblem::Unsafe("names no file"));
         }
         if name.len() > limits.path_bytes {
             return Err(PathProblem::Limit(format!(
@@ -136,7 +143,7 @@ impl PackagePath {
                 limits.path_segments
             )));
         }
-        Ok(Self(name.to_owned()))
+        Ok(Self(name))
     }
 
     pub(crate) fn as_str(&self) -> &str {
@@ -205,9 +212,8 @@ mod tests {
             "c:x",
             "../x",
             "a/../../x",
-            "a//b",
-            "./a",
-            "a/",
+            "./.",
+            "./../x",
         ] {
             assert!(
                 matches!(PackagePath::new(name, &limits), Err(PathProblem::Unsafe(_))),
@@ -215,6 +221,18 @@ mod tests {
             );
         }
         assert!(PackagePath::new("build/a..b/x.targets", &limits).is_ok());
+    }
+
+    #[test]
+    fn empty_and_dot_segments_are_dropped_as_nuget_does_on_extraction() {
+        let limits = Limits::default();
+        for (name, path) in [
+            ("analyzers/cs//A.dll", "analyzers/cs/A.dll"),
+            ("./build/x.targets", "build/x.targets"),
+            ("lib/./net8.0/A.dll", "lib/net8.0/A.dll"),
+        ] {
+            assert_eq!(PackagePath::new(name, &limits).unwrap().as_str(), path);
+        }
     }
 
     #[test]
