@@ -1,0 +1,23 @@
+# What customs reports on the benign corpus (corpus/benign.txt), reviewed by hand.
+# `cargo test --release -- --ignored corpus` checks the scan against this file:
+# a finding missing here, or a line here that the scan no longer produces,
+# fails the test, and so does any error.
+#
+# Notes are counted per rule: `notes RULE COUNT`.
+# Warnings and errors are listed one per line, with what the construct does:
+# ID VERSION RULE PATH:LINE EVIDENCE | reason
+#
+# Reviewed on 2026-11-22 by reading each flagged line in the package.
+
+notes C101 68
+notes C102 21
+notes C103 12
+notes C104 14
+notes C202 28
+notes C207 8
+
+Microsoft.Extensions.ApiDescription.Server 11.0.0 C203 build/Microsoft.Extensions.ApiDescription.Server.targets:68 $(_DotNetGetDocumentCommand) | runs the package's own tools/dotnet-getdocument.dll on the built assembly to write OpenAPI documents, when OpenApiGenerateDocuments is on; the command is built in lines 55 to 63
+Microsoft.Testing.Platform.MSBuild 2.5.3 C205 buildMultiTargeting/Microsoft.Testing.Platform.MSBuild.VSTest.targets:4 https://aka.ms/migrate-vstest-mtp | a documentation link in the text of an Error task that stops the VSTest target
+Microsoft.Testing.Platform.MSBuild 2.5.3 C205 buildMultiTargeting/Microsoft.Testing.Platform.MSBuild.targets:395 https://aka.ms/dotnet-test-mtp-error | a documentation link in the text of an Error task about VSTest on .NET 10 SDK
+Microsoft.VisualStudio.Azure.Containers.Tools.Targets 1.23.0 C203 build/Container.targets:98 $(ContainerRuntimeCommand) --version | runs the container runtime (docker or podman, chosen by the ContainerRuntimeResolve task) with --version to check that it is installed
+Microsoft.VisualStudio.Azure.Containers.Tools.Targets 1.23.0 C203 build/Container.targets:121 $(ContainerRuntimeCommand) push "%(_Dockerfile.Repository):%(_Dockerfile.Tag)" | pushes the built container image with the container runtime, in the ContainerPushImage target
