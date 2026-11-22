@@ -20,8 +20,10 @@ pub(crate) struct Limits {
     pub(crate) path_segments: usize,
     /// Bytes read from one entry to tell PE, ELF and Mach-O apart.
     pub(crate) sniff_bytes: u64,
-    /// Bytes read from one MSBuild file.
+    /// Bytes read from one MSBuild file, or from the nuspec of a `.nupkg`.
     pub(crate) text_bytes: u64,
+    /// Findings listed from one MSBuild file; past it, one C002 gap.
+    pub(crate) findings_per_file: u64,
     /// XML nodes in one MSBuild document.
     pub(crate) xml_nodes: u64,
     /// Bytes of the central directory of one archive.
@@ -43,6 +45,7 @@ impl Default for Limits {
             path_segments: 64,
             sniff_bytes: 64,
             text_bytes: 8 * MIB,
+            findings_per_file: 1_000,
             xml_nodes: 200_000,
             directory_bytes: 64 * MIB,
             ratio: 200,

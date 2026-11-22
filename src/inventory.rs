@@ -252,11 +252,19 @@ pub(crate) fn inspect(
         .map(|(p, _)| p.clone())
         .collect();
     let task_assemblies = msbuild::scan(files, &entries, &entry_points, limits, &mut outcome);
+    let position: BTreeMap<PackagePath, usize> = assets
+        .iter()
+        .enumerate()
+        .map(|(i, (p, _))| (p.clone(), i))
+        .collect();
+    let build_time = Asset::Managed {
+        role: ManagedRole::BuildTime,
+    };
     for path in task_assemblies {
-        let build_time = Asset::Managed {
-            role: ManagedRole::BuildTime,
-        };
-        match assets.iter_mut().find(|(p, _)| *p == path) {
+        // A file that is already managed code becomes build-time code; one
+        // classified as something else (an analyzer, a native binary) keeps
+        // that class; one not classified at all is added.
+        match position.get(&path).and_then(|i| assets.get_mut(*i)) {
             Some((_, asset)) if matches!(asset, Asset::Managed { .. }) => *asset = build_time,
             Some(_) => {}
             None => assets.push((path, build_time)),

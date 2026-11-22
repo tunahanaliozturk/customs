@@ -324,11 +324,21 @@ fn entry_name(raw: &[u8]) -> Result<String, &'static str> {
     Ok(name)
 }
 
+/// What the root of an archive holds as its nuspec.
+#[derive(Debug)]
+pub(crate) enum Nuspec {
+    Absent,
+    /// More than one `.nuspec` at the root: C003.
+    Many,
+    Bytes(Vec<u8>),
+    /// Over the cap (C002) or unreadable (C001).
+    Unread(Gap),
+}
+
 impl Archive {
-    /// The bytes of the nuspec at the root of the package, read within the
-    /// limit for MSBuild and text files. `None` if there is none, or more
-    /// than one, or it cannot be read.
-    pub(crate) fn nuspec(&mut self, limits: &Limits, budget: &mut Budget) -> Option<Vec<u8>> {
+    /// The nuspec at the root of the package, read within the limit for
+    /// MSBuild and text files and counted in `budget`.
+    pub(crate) fn nuspec(&mut self, limits: &Limits, budget: &mut Budget) -> Nuspec {
         let mut found = None;
         for key in 0..self.zip.len() {
             let Ok(data) = self.zip.by_index_data(key) else {
@@ -341,19 +351,37 @@ impl Archive {
                 && name
                     .rsplit_once('.')
                     .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("nuspec"));
-            if is_nuspec {
-                if found.is_some() {
-                    return None;
-                }
-                found = Some(Entry {
-                    path: PackagePath::new(&name, limits).ok()?,
-                    size: data.size(),
-                    key,
-                });
+            if !is_nuspec {
+                continue;
             }
+            if found.is_some() {
+                return Nuspec::Many;
+            }
+            let Ok(path) = PackagePath::new(&name, limits) else {
+                continue;
+            };
+            found = Some(Entry {
+                path,
+                size: data.size(),
+                key,
+            });
         }
-        let bytes = self.read(&found?, limits.text_bytes, limits, budget).ok()?;
-        Some(bytes)
+        let Some(entry) = found else {
+            return Nuspec::Absent;
+        };
+        let cap = limits.text_bytes.saturating_add(1);
+        match self.read(&entry, cap, limits, budget) {
+            Err(gap) => Nuspec::Unread(gap),
+            Ok(bytes) if bytes.len() as u64 > limits.text_bytes => Nuspec::Unread(Gap::new(
+                GapRule::C002,
+                Some(entry.path.as_str().to_owned()),
+                format!(
+                    "limit reached: a nuspec over {} bytes; not read, so the package is named from its file name",
+                    thousands(limits.text_bytes)
+                ),
+            )),
+            Ok(bytes) => Nuspec::Bytes(bytes),
+        }
     }
 }
 

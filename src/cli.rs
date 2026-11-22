@@ -9,18 +9,19 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use crate::archive;
+use crate::archive::Nuspec;
 use crate::folder::Folder;
 use crate::graph::{self, GraphKind, PackageId, PackageRef, PackageVersion};
 use crate::inventory;
 use crate::locate;
 use crate::locate::{Listed, Location};
-use crate::msbuild;
 use crate::package::{Limits, thousands};
 use crate::report;
 use crate::scan::{
     FailOn, Finding, FindingRule, Gap, GapRule, Input, InputKind, Origin, Outcome, PackageScan,
     RULES, Scan, Severity,
 };
+use crate::xml;
 
 const HELP: &str = "\
 customs: shows what the NuGet packages of a .NET project run at build time
@@ -462,16 +463,34 @@ fn linked_package(outcome: &mut Outcome, link: &str) {
 fn scan_nupkg(file: &Path, limits: &Limits) -> Result<PackageScan, Usage> {
     let mut outcome = Outcome::default();
     let mut archive = archive::open(file, limits, &mut outcome);
-    // The nuspec names the package, as NuGet reads it; the file name is the
-    // fallback for an archive that cannot be opened or has no usable nuspec.
-    let from_nuspec = archive.as_mut().and_then(|a| {
-        let bytes = a.nuspec(limits, &mut outcome.budget)?;
-        let (id, version) = msbuild::nuspec_identity(&bytes, limits)?;
-        Some((
-            PackageId::new(&id).ok()?,
-            PackageVersion::new(&version).ok()?,
-        ))
-    });
+    // The nuspec names the package, as NuGet reads it, and wins over the
+    // file name. The file name is the fallback when there is no single
+    // readable nuspec.
+    let nuspec = archive
+        .as_mut()
+        .map_or(Nuspec::Absent, |a| a.nuspec(limits, &mut outcome.budget));
+    let from_nuspec = match nuspec {
+        Nuspec::Bytes(bytes) => xml::nuspec_identity(&bytes, limits).and_then(|(id, version)| {
+            Some((
+                PackageId::new(&id).ok()?,
+                PackageVersion::new(&version).ok()?,
+            ))
+        }),
+        Nuspec::Many => {
+            outcome.findings.push(Finding::new(
+                FindingRule::C003,
+                None,
+                "more than one .nuspec at the root; NuGet reads only one, and which one is not customs's to guess"
+                    .to_owned(),
+            ));
+            None
+        }
+        Nuspec::Unread(gap) => {
+            outcome.gaps.push(gap);
+            None
+        }
+        Nuspec::Absent => None,
+    };
     let name = file.file_name().unwrap_or_default().to_string_lossy();
     let (id, version) = from_nuspec
         .or_else(|| locate::nupkg_identity(&name))

@@ -18,5 +18,6 @@ mod msbuild;
 mod package;
 mod report;
 mod scan;
+mod xml;
 
 pub use cli::run;
