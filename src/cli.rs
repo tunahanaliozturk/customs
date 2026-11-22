@@ -13,10 +13,12 @@ use crate::folder::Folder;
 use crate::graph::{self, GraphKind, PackageId, PackageRef, PackageVersion};
 use crate::inventory;
 use crate::locate;
+use crate::locate::{Listed, Location};
 use crate::package::{Limits, thousands};
 use crate::report;
 use crate::scan::{
-    FailOn, Gap, GapRule, Input, InputKind, Origin, Outcome, PackageScan, RULES, Scan, Severity,
+    FailOn, Finding, FindingRule, Gap, GapRule, Input, InputKind, Origin, Outcome, PackageScan,
+    RULES, Scan, Severity,
 };
 
 const HELP: &str = "\
@@ -180,7 +182,8 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> ExitCode {
             // If stderr itself is gone there is nobody left to tell.
             let _ = writeln!(
                 io::stderr().lock(),
-                "customs: {message}\nRun `customs --help` for usage."
+                "customs: {}\nRun `customs --help` for usage.",
+                report::escape(&message)
             );
             ExitCode::from(2)
         }
@@ -414,23 +417,44 @@ fn scan_graph_package(package: PackageRef, roots: &[PathBuf], limits: &Limits) -
         assets: Vec::new(),
         outcome: Outcome::default(),
     };
-    if let Some(dir) = locate::find(roots, &found.id, &found.version) {
-        found.source = Some(display(&dir));
-        (found.assets, found.outcome) =
-            inventory::inspect(&mut Folder::new(&dir), found.id.as_str(), limits);
-    } else {
-        let searched: Vec<String> = roots.iter().map(|r| display(r)).collect();
-        let message = if searched.is_empty() {
-            "not found: no package folder to look in; use --packages-dir".to_owned()
-        } else {
-            format!("not found in {}", searched.join(", "))
-        };
-        found
-            .outcome
-            .gaps
-            .push(Gap::new(GapRule::C001, None, message));
+    match locate::find(roots, &found.id, &found.version) {
+        Location::Found(dir) => {
+            found.source = Some(display(&dir));
+            (found.assets, found.outcome) =
+                inventory::inspect(&mut Folder::new(&dir), found.id.as_str(), limits);
+        }
+        Location::Link(link) => {
+            found.source = Some(display(&link));
+            linked_package(&mut found.outcome, &display(&link));
+        }
+        Location::Missing => {
+            let searched: Vec<String> = roots.iter().map(|r| display(r)).collect();
+            let message = if searched.is_empty() {
+                "not found: no package folder to look in; use --packages-dir".to_owned()
+            } else {
+                format!("not found in {}", searched.join(", "))
+            };
+            found
+                .outcome
+                .gaps
+                .push(Gap::new(GapRule::C001, None, message));
+        }
     }
     found
+}
+
+/// A package folder that is a link: C003, not read, so not complete.
+fn linked_package(outcome: &mut Outcome, link: &str) {
+    outcome.findings.push(Finding::new(
+        FindingRule::C003,
+        None,
+        format!("the package folder is a link, not followed: {link}"),
+    ));
+    outcome.gaps.push(Gap::new(
+        GapRule::C001,
+        None,
+        "not read, because the package folder is a link (see C003)".to_owned(),
+    ));
 }
 
 /// Inspects a single `.nupkg` through the archive reader.
@@ -471,7 +495,36 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
         kind: Some(InputKind::PackagesDir),
     });
     let folders = locate::package_folders(root).map_err(|e| Usage(format!("{shown}: {e}")))?;
-    for (id_name, version_name, dir) in folders {
+    for listed in folders {
+        let (id_name, version_name, dir) = match listed {
+            Listed::Package { id, version, dir } => (id, version, Some(dir)),
+            Listed::Link {
+                id,
+                version: Some(version),
+            } => (id, version, None),
+            Listed::Link { id, version: None } => {
+                scan.input_gaps.push((
+                    shown.clone(),
+                    Gap::new(
+                        GapRule::C001,
+                        Some(id),
+                        "not read, because this ID folder is a link, not followed".to_owned(),
+                    ),
+                ));
+                continue;
+            }
+            Listed::Unreadable { name, error } => {
+                scan.input_gaps.push((
+                    shown.clone(),
+                    Gap::new(
+                        GapRule::C001,
+                        Some(name),
+                        format!("could not list the folder: {error}"),
+                    ),
+                ));
+                continue;
+            }
+        };
         let (Ok(id), Ok(version)) = (PackageId::new(&id_name), PackageVersion::new(&version_name))
         else {
             scan.input_gaps.push((
@@ -489,9 +542,15 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
             version,
             origin: Origin::PackagesDir,
             frameworks: std::collections::BTreeSet::new(),
-            source: Some(display(&dir)),
+            source: Some(display(&root.join(&id_name).join(&version_name))),
             assets: Vec::new(),
             outcome: Outcome::default(),
+        };
+        let Some(dir) = dir else {
+            let link = found.source.clone().unwrap_or_default();
+            linked_package(&mut found.outcome, &link);
+            scan.packages.push(found);
+            continue;
         };
         if locate::is_complete(&dir, &id_name, &version_name) {
             (found.assets, found.outcome) =

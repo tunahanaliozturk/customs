@@ -20,49 +20,143 @@ pub(crate) fn default_root(
     }
 }
 
+/// What a package folder on disk is, without following links.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Kind {
+    Dir,
+    Link,
+    Other,
+}
+
+fn kind(path: &Path) -> Kind {
+    match fs::symlink_metadata(path) {
+        Ok(meta) if meta.file_type().is_symlink() => Kind::Link,
+        Ok(meta) if meta.is_dir() => Kind::Dir,
+        _ => Kind::Other,
+    }
+}
+
+/// Where a package of a graph is.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Location {
+    /// A complete, real folder.
+    Found(PathBuf),
+    /// The ID folder or the version folder is a symbolic link or a junction.
+    /// It is not followed.
+    Link(PathBuf),
+    Missing,
+}
+
 /// The folder of a package version in the first root that has it complete.
-pub(crate) fn find(roots: &[PathBuf], id: &PackageId, version: &PackageVersion) -> Option<PathBuf> {
-    roots
-        .iter()
-        .map(|root| root.join(id.lower()).join(version.lower()))
-        .find(|dir| is_complete(dir, id.lower(), version.lower()))
+/// A link at the ID or the version level stops the search: it is reported,
+/// never followed.
+pub(crate) fn find(roots: &[PathBuf], id: &PackageId, version: &PackageVersion) -> Location {
+    for root in roots {
+        let id_dir = root.join(id.lower());
+        match kind(&id_dir) {
+            Kind::Link => return Location::Link(id_dir),
+            Kind::Dir => {}
+            Kind::Other => continue,
+        }
+        let dir = id_dir.join(version.lower());
+        match kind(&dir) {
+            Kind::Link => return Location::Link(dir),
+            Kind::Dir if is_complete(&dir, id.lower(), version.lower()) => {
+                return Location::Found(dir);
+            }
+            Kind::Dir | Kind::Other => {}
+        }
+    }
+    Location::Missing
 }
 
 /// `NuGet` writes `.nupkg.metadata` last when it extracts a package, and
 /// older versions wrote only the `.nupkg.sha512` file. A folder with neither
-/// is a half-finished extraction that `NuGet` itself would not use.
+/// is a half-finished extraction that `NuGet` itself would not use. The
+/// marker must be a regular file, not a link.
 pub(crate) fn is_complete(dir: &Path, id: &str, version: &str) -> bool {
-    dir.join(".nupkg.metadata").is_file()
-        || dir.join(format!("{id}.{version}.nupkg.sha512")).is_file()
+    let regular = |path: PathBuf| fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_file());
+    regular(dir.join(".nupkg.metadata"))
+        || regular(dir.join(format!("{id}.{version}.nupkg.sha512")))
 }
 
-/// Every `ID/version` folder in a global packages folder, sorted. Names that
-/// start with a dot are not packages and are left out.
-pub(crate) fn package_folders(root: &Path) -> io::Result<Vec<(String, String, PathBuf)>> {
+/// One item of a global packages folder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Listed {
+    Package {
+        id: String,
+        version: String,
+        dir: PathBuf,
+    },
+    /// An ID or version folder that is a link: `name` is `id` or
+    /// `id/version`. Not followed.
+    Link { id: String, version: Option<String> },
+    /// A folder that could not be listed: `name` is `id` or `id/version`.
+    Unreadable { name: String, error: String },
+}
+
+/// Every `ID/version` folder in a global packages folder, sorted, with
+/// links and unreadable folders reported instead of dropped. Names that
+/// start with a dot are not packages and are left out. Only the root itself
+/// failing to list is an error.
+pub(crate) fn package_folders(root: &Path) -> io::Result<Vec<Listed>> {
     let mut found = Vec::new();
-    for id in sorted_dirs(root)? {
-        let id_name = id.file_name().to_string_lossy().into_owned();
-        if id_name.starts_with('.') {
+    for (id, id_path, id_kind) in sorted_children(root)? {
+        if id.starts_with('.') {
             continue;
         }
-        for version in sorted_dirs(&id.path())? {
-            let version_name = version.file_name().to_string_lossy().into_owned();
-            found.push((id_name.clone(), version_name, version.path()));
+        match id_kind {
+            Kind::Link => found.push(Listed::Link { id, version: None }),
+            Kind::Other => {}
+            Kind::Dir => match sorted_children(&id_path) {
+                Err(e) => found.push(Listed::Unreadable {
+                    name: id,
+                    error: e.to_string(),
+                }),
+                Ok(versions) => {
+                    for (version, dir, version_kind) in versions {
+                        match version_kind {
+                            Kind::Link => found.push(Listed::Link {
+                                id: id.clone(),
+                                version: Some(version),
+                            }),
+                            Kind::Dir => found.push(Listed::Package {
+                                id: id.clone(),
+                                version,
+                                dir,
+                            }),
+                            Kind::Other => {}
+                        }
+                    }
+                }
+            },
         }
     }
     Ok(found)
 }
 
-fn sorted_dirs(dir: &Path) -> io::Result<Vec<fs::DirEntry>> {
-    let mut dirs = Vec::new();
+/// The children of a folder, sorted by name, with their kind; links are not
+/// followed.
+fn sorted_children(dir: &Path) -> io::Result<Vec<(String, PathBuf, Kind)>> {
+    let mut children = Vec::new();
     for child in fs::read_dir(dir)? {
         let child = child?;
-        if child.file_type()?.is_dir() {
-            dirs.push(child);
-        }
+        let file_type = child.file_type()?;
+        let kind = if file_type.is_symlink() {
+            Kind::Link
+        } else if file_type.is_dir() {
+            Kind::Dir
+        } else {
+            Kind::Other
+        };
+        children.push((
+            child.file_name().to_string_lossy().into_owned(),
+            child.path(),
+            kind,
+        ));
     }
-    dirs.sort_by_key(fs::DirEntry::file_name);
-    Ok(dirs)
+    children.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(children)
 }
 
 /// The ID and version in a `.nupkg` file name: `contoso.tools.1.2.0.nupkg`.
@@ -124,6 +218,27 @@ pub(crate) fn graph_files(dir: &Path) -> io::Result<Vec<PathBuf>> {
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
+    #[test]
+    fn an_unreadable_folder_is_listed_as_unreadable_and_the_rest_is_kept() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        for id in ["contoso.a", "contoso.b"] {
+            fs::create_dir_all(root.path().join(id).join("1.0.0")).unwrap();
+        }
+        let locked = root.path().join("contoso.a");
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+        let listed = package_folders(root.path());
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+        let listed = listed.unwrap();
+        if matches!(listed[0], Listed::Package { .. }) {
+            // Running as root, where permissions do not stop a read.
+            return;
+        }
+        assert!(matches!(&listed[0], Listed::Unreadable { name, .. } if name == "contoso.a"));
+        assert!(matches!(&listed[1], Listed::Package { id, .. } if id == "contoso.b"));
+    }
+
     #[test]
     fn nupkg_file_names_split_into_id_and_version() {
         let split = |name: &str| {
@@ -164,8 +279,8 @@ mod tests {
         let dir = root.path().join("contoso.a").join("1.0.0-beta");
         fs::create_dir_all(&dir).unwrap();
         let roots = [root.path().to_path_buf()];
-        assert_eq!(find(&roots, &id, &version), None);
+        assert_eq!(find(&roots, &id, &version), Location::Missing);
         fs::write(dir.join("contoso.a.1.0.0-beta.nupkg.sha512"), "x").unwrap();
-        assert_eq!(find(&roots, &id, &version), Some(dir));
+        assert_eq!(find(&roots, &id, &version), Location::Found(dir));
     }
 }
