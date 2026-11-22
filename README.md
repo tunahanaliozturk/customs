@@ -8,7 +8,7 @@ At a border, customs officers open the crates and list what is inside before any
 
 ## Status
 
-Milestone M1 of seven is done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder, and lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code. It says so, with exit code 3, when it could not look at everything. It does not read inside MSBuild files (M2) or assemblies (M3) yet, it does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
+Milestones M1 and M2 of seven are done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder. It lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code, and it reads every MSBuild file of every package for inline tasks, `Exec`, `DownloadFile`, URLs and long base64 strings, at file and line, following literal imports from the entry points. It says so, with exit code 3, when it could not look at everything. It does not read assemblies (M3) yet, it does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
 
 ## Try it
 
@@ -28,15 +28,39 @@ Contoso.Analyzers 1.0.4  (direct)
 
 Contoso.Build.Tools 3.2.0  (direct)
   note     C101  build assets: build/Contoso.Build.Tools.targets (+2 more files)
+  warning  C203  Exec task
+                 build/tasks/Fetch.targets:4  echo fixture, would fetch https://example.invalid/tool
+  warning  C205  URL
+                 build/tasks/Fetch.targets:4  https://example.invalid/tool
 
 Fabrikam.Native 2.1.0  (transitive)
   note     C104  native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)
 
-0 errors, 0 warnings, 3 notes
-exit 0: no finding at or above --fail-on warning
+0 errors, 2 warnings, 3 notes
+exit 1: findings at or above --fail-on warning
 ```
 
-Add `--format json` for every file of every package, by kind. On your own project, run `dotnet restore` first, then point customs at the project folder, its `packages.lock.json` or its `obj/project.assets.json`. `customs rules` lists the rules and `customs --help` the options.
+The `Exec` sits in `build/tasks/Fetch.targets`, which the package's entry point `build/Contoso.Build.Tools.targets` imports. Add `--format json` for every file of every package, by kind, and every finding with its line and evidence. On your own project, run `dotnet restore` first, then point customs at the project folder, its `packages.lock.json` or its `obj/project.assets.json`. `customs rules` lists the rules and `customs --help` the options.
+
+## What a normal project sees
+
+The benign corpus is the 300 most downloaded packages on nuget.org, pinned in [corpus/benign.txt](corpus/benign.txt) on 2026-11-22. Packages with at least one warning, by rule:
+
+| Rule | Packages |
+| --- | --- |
+| C203 `Exec` task | 2 |
+| C205 URL | 1 |
+| C201, C204, C206, C004, C003 | 0 |
+
+No package in the corpus produces an error. Every warning is explained in [corpus/benign-expected.txt](corpus/benign-expected.txt). To reproduce the numbers:
+
+```
+python corpus/corpus.py fetch
+cargo test --release --test corpus -- --ignored
+cargo run --release --quiet -- scan target/corpus/*.nupkg --format json --fail-on never
+```
+
+The first command downloads the 300 packages (849,380,928 bytes) into `target/corpus` and checks each against its pinned SHA-512. The second checks the scan against the reviewed list. The third prints the report the table counts.
 
 ## Documents
 
