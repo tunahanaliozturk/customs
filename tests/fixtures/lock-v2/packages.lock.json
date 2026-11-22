@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net8.0": {
+      "Contoso.Shouting": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "fixture"
+      },
+      "Contoso.Sources": {
+        "type": "Direct",
+        "requested": "[1.1.0, )",
+        "resolved": "1.1.0",
+        "contentHash": "fixture"
+      },
+      "Fabrikam.Legacy": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "fixture"
+      }
+    },
+    "net48": {
+      "Fabrikam.Legacy": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "fixture"
+      }
+    }
+  }
+}

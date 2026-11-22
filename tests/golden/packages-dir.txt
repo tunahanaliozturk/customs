@@ -1,0 +1,22 @@
+customs 0.0.0: 7 packages from 1 input, all complete
+
+contoso.analyzers 1.0.4
+  note     C102  analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)
+
+contoso.build.tools 3.2.0
+  note     C101  build assets: build/Contoso.Build.Tools.targets (+2 more files)
+
+contoso.shouting 1.0.0
+  note     C101  build assets: BUILD/Contoso.Shouting.targets
+
+contoso.sources 1.1.0
+  note     C105  contentFiles source: contentFiles/cs/any/Helpers.cs
+
+fabrikam.legacy 1.0.0
+  note     C103  PowerShell script: tools/init.ps1 (+1 more file)
+
+fabrikam.native 2.1.0
+  note     C104  native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)
+
+0 errors, 0 warnings, 6 notes
+exit 0: no finding at or above --fail-on warning

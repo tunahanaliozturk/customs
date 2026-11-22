@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "Contoso.Build.Tools": {
+        "type": "Direct",
+        "requested": "[3.2.0, )",
+        "resolved": "3.2.0",
+        "contentHash": "fixture",
+        "dependencies": {
+          "Fabrikam.Plain": "4.0.0-Beta.2"
+        }
+      },
+      "Contoso.Analyzers": {
+        "type": "Direct",
+        "requested": "[1.0.4, )",
+        "resolved": "1.0.4",
+        "contentHash": "fixture"
+      },
+      "Fabrikam.Plain": {
+        "type": "Transitive",
+        "resolved": "4.0.0-Beta.2",
+        "contentHash": "fixture"
+      },
+      "contoso.app.core": {
+        "type": "Project",
+        "dependencies": {
+          "Contoso.Build.Tools": "[3.2.0, )"
+        }
+      }
+    },
+    "net8.0/linux-x64": {
+      "Fabrikam.Native": {
+        "type": "Transitive",
+        "resolved": "2.1.0",
+        "contentHash": "fixture"
+      }
+    }
+  }
+}

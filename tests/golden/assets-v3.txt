@@ -1,0 +1,7 @@
+customs 0.0.0: 1 package from 1 input, all complete
+
+Contoso.Sources 1.1.0  (transitive)
+  note     C105  contentFiles source: contentFiles/cs/any/Helpers.cs
+
+0 errors, 0 warnings, 1 note
+exit 0: no finding at or above --fail-on warning

@@ -1,0 +1,57 @@
+{
+  "version": 4,
+  "targets": {
+    "net8.0": {
+      "Contoso.Analyzers/1.0.4.0": {
+        "type": "package"
+      },
+      "Fabrikam.Native/2.1.0": {
+        "type": "package"
+      },
+      "Contoso.Web/1.0.0": {
+        "type": "project"
+      }
+    }
+  },
+  "libraries": {
+    "Contoso.Analyzers/1.0.4.0": {
+      "sha512": "fixture",
+      "type": "package",
+      "path": "contoso.analyzers/1.0.4"
+    },
+    "Fabrikam.Native/2.1.0": {
+      "sha512": "fixture",
+      "type": "package",
+      "path": "fabrikam.native/2.1.0"
+    },
+    "Contoso.Web/1.0.0": {
+      "type": "project",
+      "path": "../Contoso.Web/Contoso.Web.csproj",
+      "msbuildProject": "../Contoso.Web/Contoso.Web.csproj"
+    }
+  },
+  "packageFolders": {
+    "../../no-such-folder/": {},
+    "../../packages/": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "frameworks": {
+      "net8.0": {
+        "targetAlias": "net8.0",
+        "dependencies": {
+          "Contoso.Analyzers": {
+            "target": "Package",
+            "version": "[1.0.4, )"
+          }
+        },
+        "downloadDependencies": [
+          {
+            "name": "Fabrikam.Legacy",
+            "version": "[1.0.0, 1.0.0]"
+          }
+        ]
+      }
+    }
+  }
+}

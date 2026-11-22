@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "tool": {
+    "name": "customs",
+    "version": "0.0.0"
+  },
+  "inputs": [
+    {
+      "path": "missing/packages.lock.json",
+      "kind": "lock",
+      "format_version": 1
+    }
+  ],
+  "packages": [
+    {
+      "id": "Contoso.Missing",
+      "version": "1.0.0",
+      "dependency": "direct",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": null,
+      "complete": false,
+      "read": {
+        "entries": 0,
+        "bytes": 0
+      },
+      "assets": []
+    },
+    {
+      "id": "Fabrikam.Plain",
+      "version": "4.0.0-beta.2",
+      "dependency": "transitive",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": "packages/fabrikam.plain/4.0.0-beta.2",
+      "complete": true,
+      "read": {
+        "entries": 3,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "lib/netstandard2.0/Fabrikam.Plain.dll",
+          "kind": "managed",
+          "role": "lib"
+        }
+      ]
+    }
+  ],
+  "findings": [],
+  "incomplete": [
+    {
+      "rule": "C001",
+      "input": null,
+      "package": "Contoso.Missing",
+      "version": "1.0.0",
+      "path": null,
+      "message": "not found in packages, no-such-cache"
+    }
+  ]
+}

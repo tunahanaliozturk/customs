@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "tool": {
+    "name": "customs",
+    "version": "0.0.0"
+  },
+  "inputs": [
+    {
+      "path": "assets-v3/obj/project.assets.json",
+      "kind": "assets",
+      "format_version": 3
+    }
+  ],
+  "packages": [
+    {
+      "id": "Contoso.Sources",
+      "version": "1.1.0",
+      "dependency": "transitive",
+      "frameworks": [
+        "net6.0"
+      ],
+      "source": "assets-v3/obj/../../packages/contoso.sources/1.1.0",
+      "complete": true,
+      "read": {
+        "entries": 4,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "contentFiles/cs/any/Helpers.cs",
+          "kind": "content_source"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "C105",
+      "severity": "note",
+      "package": "Contoso.Sources",
+      "version": "1.1.0",
+      "path": "contentFiles/cs/any/Helpers.cs",
+      "message": "contentFiles source: contentFiles/cs/any/Helpers.cs"
+    }
+  ],
+  "incomplete": []
+}

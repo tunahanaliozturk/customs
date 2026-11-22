@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "tool": {
+    "name": "customs",
+    "version": "0.0.0"
+  },
+  "inputs": [
+    {
+      "path": "contoso.build.tools.3.2.0.nupkg",
+      "kind": "nupkg",
+      "format_version": null
+    }
+  ],
+  "packages": [
+    {
+      "id": "contoso.build.tools",
+      "version": "3.2.0",
+      "dependency": null,
+      "frameworks": [],
+      "source": "contoso.build.tools.3.2.0.nupkg",
+      "complete": true,
+      "read": {
+        "entries": 6,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "build/Contoso.Build.Tools.targets",
+          "kind": "build",
+          "folder": "build",
+          "entry_point": true
+        },
+        {
+          "path": "build/tasks/Fetch.targets",
+          "kind": "build",
+          "folder": "build",
+          "entry_point": false
+        },
+        {
+          "path": "buildTransitive/net8.0/Contoso.Build.Tools.props",
+          "kind": "build",
+          "folder": "buildTransitive",
+          "entry_point": true
+        },
+        {
+          "path": "lib/net8.0/Contoso.Build.Tools.dll",
+          "kind": "managed",
+          "role": "lib"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "C101",
+      "severity": "note",
+      "package": "contoso.build.tools",
+      "version": "3.2.0",
+      "path": "build/Contoso.Build.Tools.targets",
+      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)"
+    }
+  ],
+  "incomplete": []
+}

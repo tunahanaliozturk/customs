@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "tool": {
+    "name": "customs",
+    "version": "0.0.0"
+  },
+  "inputs": [
+    {
+      "path": "lock-v2/packages.lock.json",
+      "kind": "lock",
+      "format_version": 2
+    }
+  ],
+  "packages": [
+    {
+      "id": "Contoso.Shouting",
+      "version": "1.0.0",
+      "dependency": "direct",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": "packages/contoso.shouting/1.0.0",
+      "complete": true,
+      "read": {
+        "entries": 3,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "BUILD/Contoso.Shouting.targets",
+          "kind": "build",
+          "folder": "build",
+          "entry_point": true
+        }
+      ]
+    },
+    {
+      "id": "Contoso.Sources",
+      "version": "1.1.0",
+      "dependency": "direct",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": "packages/contoso.sources/1.1.0",
+      "complete": true,
+      "read": {
+        "entries": 4,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "contentFiles/cs/any/Helpers.cs",
+          "kind": "content_source"
+        }
+      ]
+    },
+    {
+      "id": "Fabrikam.Legacy",
+      "version": "1.0.0",
+      "dependency": "central_transitive",
+      "frameworks": [
+        "net48",
+        "net8.0"
+      ],
+      "source": "packages/fabrikam.legacy/1.0.0",
+      "complete": true,
+      "read": {
+        "entries": 5,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "lib/net45/Fabrikam.Legacy.dll",
+          "kind": "managed",
+          "role": "lib"
+        },
+        {
+          "path": "tools/init.ps1",
+          "kind": "powershell"
+        },
+        {
+          "path": "tools/install.ps1",
+          "kind": "powershell"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "C101",
+      "severity": "note",
+      "package": "Contoso.Shouting",
+      "version": "1.0.0",
+      "path": "BUILD/Contoso.Shouting.targets",
+      "message": "build assets: BUILD/Contoso.Shouting.targets"
+    },
+    {
+      "rule": "C105",
+      "severity": "note",
+      "package": "Contoso.Sources",
+      "version": "1.1.0",
+      "path": "contentFiles/cs/any/Helpers.cs",
+      "message": "contentFiles source: contentFiles/cs/any/Helpers.cs"
+    },
+    {
+      "rule": "C103",
+      "severity": "note",
+      "package": "Fabrikam.Legacy",
+      "version": "1.0.0",
+      "path": "tools/init.ps1",
+      "message": "PowerShell script: tools/init.ps1 (+1 more file)"
+    }
+  ],
+  "incomplete": []
+}

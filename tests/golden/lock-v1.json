@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "tool": {
+    "name": "customs",
+    "version": "0.0.0"
+  },
+  "inputs": [
+    {
+      "path": "lock-v1/packages.lock.json",
+      "kind": "lock",
+      "format_version": 1
+    }
+  ],
+  "packages": [
+    {
+      "id": "Contoso.Analyzers",
+      "version": "1.0.4",
+      "dependency": "direct",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": "packages/contoso.analyzers/1.0.4",
+      "complete": true,
+      "read": {
+        "entries": 4,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll",
+          "kind": "analyzer"
+        },
+        {
+          "path": "analyzers/dotnet/cs/Contoso.Analyzers.dll",
+          "kind": "analyzer"
+        }
+      ]
+    },
+    {
+      "id": "Contoso.Build.Tools",
+      "version": "3.2.0",
+      "dependency": "direct",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": "packages/contoso.build.tools/3.2.0",
+      "complete": true,
+      "read": {
+        "entries": 7,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "build/Contoso.Build.Tools.targets",
+          "kind": "build",
+          "folder": "build",
+          "entry_point": true
+        },
+        {
+          "path": "build/tasks/Fetch.targets",
+          "kind": "build",
+          "folder": "build",
+          "entry_point": false
+        },
+        {
+          "path": "buildTransitive/net8.0/Contoso.Build.Tools.props",
+          "kind": "build",
+          "folder": "buildTransitive",
+          "entry_point": true
+        },
+        {
+          "path": "lib/net8.0/Contoso.Build.Tools.dll",
+          "kind": "managed",
+          "role": "lib"
+        }
+      ]
+    },
+    {
+      "id": "Fabrikam.Native",
+      "version": "2.1.0",
+      "dependency": "transitive",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": "packages/fabrikam.native/2.1.0",
+      "complete": true,
+      "read": {
+        "entries": 8,
+        "bytes": 146
+      },
+      "assets": [
+        {
+          "path": "lib/netstandard2.0/Fabrikam.Native.dll",
+          "kind": "managed",
+          "role": "lib"
+        },
+        {
+          "path": "runtimes/linux-x64/native/libfabrikam.so",
+          "kind": "native",
+          "format": "elf"
+        },
+        {
+          "path": "runtimes/osx-arm64/native/libfabrikam.dylib",
+          "kind": "native",
+          "format": "mach-o"
+        },
+        {
+          "path": "runtimes/win-x64/native/fabrikam.dll",
+          "kind": "native",
+          "format": "pe"
+        },
+        {
+          "path": "tools/linux-x64/fabgen",
+          "kind": "native",
+          "format": "elf"
+        }
+      ]
+    },
+    {
+      "id": "Fabrikam.Plain",
+      "version": "4.0.0-Beta.2",
+      "dependency": "transitive",
+      "frameworks": [
+        "net8.0"
+      ],
+      "source": "packages/fabrikam.plain/4.0.0-beta.2",
+      "complete": true,
+      "read": {
+        "entries": 3,
+        "bytes": 0
+      },
+      "assets": [
+        {
+          "path": "lib/netstandard2.0/Fabrikam.Plain.dll",
+          "kind": "managed",
+          "role": "lib"
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "rule": "C102",
+      "severity": "note",
+      "package": "Contoso.Analyzers",
+      "version": "1.0.4",
+      "path": "analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll",
+      "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)"
+    },
+    {
+      "rule": "C101",
+      "severity": "note",
+      "package": "Contoso.Build.Tools",
+      "version": "3.2.0",
+      "path": "build/Contoso.Build.Tools.targets",
+      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)"
+    },
+    {
+      "rule": "C104",
+      "severity": "note",
+      "package": "Fabrikam.Native",
+      "version": "2.1.0",
+      "path": "runtimes/linux-x64/native/libfabrikam.so",
+      "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)"
+    }
+  ],
+  "incomplete": []
+}

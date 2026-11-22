@@ -1,0 +1,7 @@
+customs 0.0.0: 2 packages from 1 input, 1 gap
+
+Contoso.Missing 1.0.0  (direct)
+  gap      C001  not found in packages, no-such-cache
+
+0 errors, 0 warnings, 0 notes, 1 gap
+exit 3: the scan is incomplete, see the gaps above

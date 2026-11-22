@@ -1,0 +1,13 @@
+customs 0.0.0: 3 packages from 1 input, all complete
+
+Contoso.Shouting 1.0.0  (direct)
+  note     C101  build assets: BUILD/Contoso.Shouting.targets
+
+Contoso.Sources 1.1.0  (direct)
+  note     C105  contentFiles source: contentFiles/cs/any/Helpers.cs
+
+Fabrikam.Legacy 1.0.0  (central transitive)
+  note     C103  PowerShell script: tools/init.ps1 (+1 more file)
+
+0 errors, 0 warnings, 3 notes
+exit 0: no finding at or above --fail-on warning

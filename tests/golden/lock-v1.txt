@@ -1,0 +1,13 @@
+customs 0.0.0: 4 packages from 1 input, all complete
+
+Contoso.Analyzers 1.0.4  (direct)
+  note     C102  analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)
+
+Contoso.Build.Tools 3.2.0  (direct)
+  note     C101  build assets: build/Contoso.Build.Tools.targets (+2 more files)
+
+Fabrikam.Native 2.1.0  (transitive)
+  note     C104  native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)
+
+0 errors, 0 warnings, 3 notes
+exit 0: no finding at or above --fail-on warning
