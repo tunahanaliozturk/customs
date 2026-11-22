@@ -14,6 +14,7 @@ use crate::graph::{self, GraphKind, PackageId, PackageRef, PackageVersion};
 use crate::inventory;
 use crate::locate;
 use crate::locate::{Listed, Location};
+use crate::msbuild;
 use crate::package::{Limits, thousands};
 use crate::report;
 use crate::scan::{
@@ -459,21 +460,35 @@ fn linked_package(outcome: &mut Outcome, link: &str) {
 
 /// Inspects a single `.nupkg` through the archive reader.
 fn scan_nupkg(file: &Path, limits: &Limits) -> Result<PackageScan, Usage> {
-    let name = file.file_name().unwrap_or_default().to_string_lossy();
-    let (id, version) = locate::nupkg_identity(&name).ok_or_else(|| {
-        Usage(format!(
-            "{}: cannot tell the package ID and version from the file name",
-            display(file)
-        ))
-    })?;
     let mut outcome = Outcome::default();
+    let mut archive = archive::open(file, limits, &mut outcome);
+    // The nuspec names the package, as NuGet reads it; the file name is the
+    // fallback for an archive that cannot be opened or has no usable nuspec.
+    let from_nuspec = archive.as_mut().and_then(|a| {
+        let bytes = a.nuspec(limits, &mut outcome.budget)?;
+        let (id, version) = msbuild::nuspec_identity(&bytes, limits)?;
+        Some((
+            PackageId::new(&id).ok()?,
+            PackageVersion::new(&version).ok()?,
+        ))
+    });
+    let name = file.file_name().unwrap_or_default().to_string_lossy();
+    let (id, version) = from_nuspec
+        .or_else(|| locate::nupkg_identity(&name))
+        .ok_or_else(|| {
+            Usage(format!(
+                "{}: cannot tell the package ID and version from its nuspec or its file name",
+                display(file)
+            ))
+        })?;
     let mut assets = Vec::new();
-    if let Some(mut archive) = archive::open(file, limits, &mut outcome) {
-        let (found, inner) = inventory::inspect(&mut archive, id.as_str(), limits);
+    if let Some(archive) = archive.as_mut() {
+        let (found, inner) = inventory::inspect(archive, id.as_str(), limits);
         assets = found;
         outcome.findings.extend(inner.findings);
         outcome.gaps.extend(inner.gaps);
-        outcome.budget = inner.budget;
+        outcome.budget.entries += inner.budget.entries;
+        outcome.budget.bytes += inner.budget.bytes;
         outcome.findings.sort();
         outcome.gaps.sort();
     }

@@ -324,6 +324,39 @@ fn entry_name(raw: &[u8]) -> Result<String, &'static str> {
     Ok(name)
 }
 
+impl Archive {
+    /// The bytes of the nuspec at the root of the package, read within the
+    /// limit for MSBuild and text files. `None` if there is none, or more
+    /// than one, or it cannot be read.
+    pub(crate) fn nuspec(&mut self, limits: &Limits, budget: &mut Budget) -> Option<Vec<u8>> {
+        let mut found = None;
+        for key in 0..self.zip.len() {
+            let Ok(data) = self.zip.by_index_data(key) else {
+                continue;
+            };
+            let Ok(name) = entry_name(data.name_raw()) else {
+                continue;
+            };
+            let is_nuspec = !name.contains('/')
+                && name
+                    .rsplit_once('.')
+                    .is_some_and(|(_, ext)| ext.eq_ignore_ascii_case("nuspec"));
+            if is_nuspec {
+                if found.is_some() {
+                    return None;
+                }
+                found = Some(Entry {
+                    path: PackagePath::new(&name, limits).ok()?,
+                    size: data.size(),
+                    key,
+                });
+            }
+        }
+        let bytes = self.read(&found?, limits.text_bytes, limits, budget).ok()?;
+        Some(bytes)
+    }
+}
+
 impl Files for Archive {
     fn entries(&mut self, limits: &Limits, outcome: &mut Outcome) -> Vec<Entry> {
         let mut entries = Vec::new();

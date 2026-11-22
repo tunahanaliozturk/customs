@@ -13,7 +13,7 @@
   ],
   "packages": [
     {
-      "id": "contoso.build.tools",
+      "id": "Contoso.Build.Tools",
       "version": "3.2.0",
       "dependency": null,
       "frameworks": [],
@@ -21,7 +21,7 @@
       "complete": true,
       "read": {
         "entries": 6,
-        "bytes": 0
+        "bytes": 451
       },
       "assets": [
         {
@@ -54,10 +54,32 @@
     {
       "rule": "C101",
       "severity": "note",
-      "package": "contoso.build.tools",
+      "package": "Contoso.Build.Tools",
       "version": "3.2.0",
       "path": "build/Contoso.Build.Tools.targets",
-      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)"
+      "line": null,
+      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)",
+      "evidence": null
+    },
+    {
+      "rule": "C203",
+      "severity": "warning",
+      "package": "Contoso.Build.Tools",
+      "version": "3.2.0",
+      "path": "build/tasks/Fetch.targets",
+      "line": 4,
+      "message": "Exec task",
+      "evidence": "echo fixture, would fetch https://example.invalid/tool"
+    },
+    {
+      "rule": "C205",
+      "severity": "warning",
+      "package": "Contoso.Build.Tools",
+      "version": "3.2.0",
+      "path": "build/tasks/Fetch.targets",
+      "line": 4,
+      "message": "URL",
+      "evidence": "https://example.invalid/tool"
     }
   ],
   "incomplete": []

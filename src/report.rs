@@ -57,6 +57,18 @@ fn is_hidden(c: char) -> bool {
         )
 }
 
+/// Evidence for a terminal line: whitespace collapsed, at most 100
+/// characters.
+fn shorten(text: &str) -> String {
+    let collapsed = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if collapsed.chars().count() > 100 {
+        let cut: String = collapsed.chars().take(100).collect();
+        format!("{cut}...")
+    } else {
+        collapsed
+    }
+}
+
 fn plural(n: usize, word: &str) -> String {
     if n == 1 {
         format!("1 {word}")
@@ -106,6 +118,16 @@ pub(crate) fn text(scan: &Scan, fail_on: FailOn, out: &mut dyn Write) -> io::Res
                 finding.rule.id(),
                 escape(&finding.message)
             )?;
+            if let (Some(path), Some(line)) = (&finding.path, finding.line) {
+                let evidence = finding.evidence.as_deref().map(shorten).unwrap_or_default();
+                writeln!(
+                    out,
+                    "{:17}{}:{line}  {}",
+                    "",
+                    escape(path),
+                    escape(&evidence)
+                )?;
+            }
         }
     }
     for (input, gap) in &scan.input_gaps {
@@ -204,7 +226,9 @@ struct FindingOut<'a> {
     package: &'a str,
     version: &'a str,
     path: Option<&'a str>,
+    line: Option<u32>,
     message: &'a str,
+    evidence: Option<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -283,7 +307,9 @@ pub(crate) fn json(scan: &Scan, out: &mut dyn Write) -> io::Result<()> {
                 package: package.id.as_str(),
                 version: package.version.as_str(),
                 path: finding.path.as_deref(),
+                line: finding.line,
                 message: &finding.message,
+                evidence: finding.evidence.as_deref(),
             })
             .collect(),
         incomplete: scan

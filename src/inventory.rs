@@ -2,11 +2,12 @@
 //! the inventory rules C101 to C105 and the case-collision part of C003.
 //! Pure, apart from the 64-byte reads it asks the package view for.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Serialize;
 
 use crate::graph::lower_invariant;
+use crate::msbuild;
 use crate::package::{Entry, Files, Limits, PackagePath};
 use crate::scan::{Finding, FindingRule, Outcome};
 
@@ -70,6 +71,11 @@ pub(crate) enum ManagedRole {
     Lib,
     Ref,
     Runtime,
+    /// Code that MSBuild or a tool runs at build time: a `.dll` or `.exe`
+    /// under `build*/` or `tools/`, or any assembly that `UsingTask
+    /// AssemblyFile` names. M3 raises the findings of such assemblies.
+    #[serde(rename = "build_time")]
+    BuildTime,
 }
 
 /// What to do with an entry.
@@ -137,14 +143,26 @@ fn classify(path: &PackagePath, id: &str) -> Class {
     let asset = if depth < 2 {
         None
     } else if let Some(folder) = build_folder {
-        ext(&["PROPS", "TARGETS"]).then(|| Asset::Build {
-            folder,
-            entry_point: depth <= 3 && lower_invariant(stem) == lower_invariant(id),
-        })
+        if ext(&["PROPS", "TARGETS"]) {
+            Some(Asset::Build {
+                folder,
+                entry_point: depth <= 3 && lower_invariant(stem) == lower_invariant(id),
+            })
+        } else {
+            ext(&["DLL", "EXE"]).then_some(Asset::Managed {
+                role: ManagedRole::BuildTime,
+            })
+        }
     } else if is(first, "ANALYZERS") {
         ext(&["DLL"]).then_some(Asset::Analyzer)
     } else if is(first, "TOOLS") {
-        ext(&["PS1", "PSM1"]).then_some(Asset::PowerShell)
+        if ext(&["PS1", "PSM1"]) {
+            Some(Asset::PowerShell)
+        } else {
+            ext(&["DLL", "EXE"]).then_some(Asset::Managed {
+                role: ManagedRole::BuildTime,
+            })
+        }
     } else if is(first, "LIB") {
         ext(&["DLL", "EXE"]).then_some(Asset::Managed {
             role: ManagedRole::Lib,
@@ -220,6 +238,31 @@ pub(crate) fn inspect(
             Class::Skip => {}
         }
     }
+    let entry_points: BTreeSet<PackagePath> = assets
+        .iter()
+        .filter(|(_, a)| {
+            matches!(
+                a,
+                Asset::Build {
+                    entry_point: true,
+                    ..
+                }
+            )
+        })
+        .map(|(p, _)| p.clone())
+        .collect();
+    let task_assemblies = msbuild::scan(files, &entries, &entry_points, limits, &mut outcome);
+    for path in task_assemblies {
+        let build_time = Asset::Managed {
+            role: ManagedRole::BuildTime,
+        };
+        match assets.iter_mut().find(|(p, _)| *p == path) {
+            Some((_, asset)) if matches!(asset, Asset::Managed { .. }) => *asset = build_time,
+            Some(_) => {}
+            None => assets.push((path, build_time)),
+        }
+    }
+    assets.sort_by(|a, b| a.0.cmp(&b.0));
     outcome.findings.extend(findings(&assets));
     outcome.findings.sort();
     outcome.gaps.sort();

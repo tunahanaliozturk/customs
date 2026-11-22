@@ -47,7 +47,7 @@
       "complete": true,
       "read": {
         "entries": 13,
-        "bytes": 0
+        "bytes": 319
       },
       "assets": [
         {
@@ -145,7 +145,9 @@
       "package": "Contoso.Analyzers",
       "version": "1.0.4",
       "path": "analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll",
-      "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)"
+      "line": null,
+      "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)",
+      "evidence": null
     },
     {
       "rule": "C101",
@@ -153,7 +155,29 @@
       "package": "Contoso.Build.Tools",
       "version": "3.2.0",
       "path": "build/Contoso.Build.Tools.targets",
-      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)"
+      "line": null,
+      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)",
+      "evidence": null
+    },
+    {
+      "rule": "C203",
+      "severity": "warning",
+      "package": "Contoso.Build.Tools",
+      "version": "3.2.0",
+      "path": "build/tasks/Fetch.targets",
+      "line": 4,
+      "message": "Exec task",
+      "evidence": "echo fixture, would fetch https://example.invalid/tool"
+    },
+    {
+      "rule": "C205",
+      "severity": "warning",
+      "package": "Contoso.Build.Tools",
+      "version": "3.2.0",
+      "path": "build/tasks/Fetch.targets",
+      "line": 4,
+      "message": "URL",
+      "evidence": "https://example.invalid/tool"
     },
     {
       "rule": "C104",
@@ -161,7 +185,9 @@
       "package": "Fabrikam.Native",
       "version": "2.1.0",
       "path": "runtimes/linux-x64/native/libfabrikam.so",
-      "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)"
+      "line": null,
+      "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)",
+      "evidence": null
     }
   ],
   "incomplete": []

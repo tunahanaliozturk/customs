@@ -14,6 +14,7 @@ mod folder;
 mod graph;
 mod inventory;
 mod locate;
+mod msbuild;
 mod package;
 mod report;
 mod scan;

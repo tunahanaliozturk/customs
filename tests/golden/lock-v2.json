@@ -23,7 +23,7 @@
       "complete": true,
       "read": {
         "entries": 4,
-        "bytes": 0
+        "bytes": 12
       },
       "assets": [
         {
@@ -92,7 +92,9 @@
       "package": "Contoso.Shouting",
       "version": "1.0.0",
       "path": "BUILD/Contoso.Shouting.targets",
-      "message": "build assets: BUILD/Contoso.Shouting.targets"
+      "line": null,
+      "message": "build assets: BUILD/Contoso.Shouting.targets",
+      "evidence": null
     },
     {
       "rule": "C105",
@@ -100,7 +102,9 @@
       "package": "Contoso.Sources",
       "version": "1.1.0",
       "path": "contentFiles/cs/any/Helpers.cs",
-      "message": "contentFiles source: contentFiles/cs/any/Helpers.cs"
+      "line": null,
+      "message": "contentFiles source: contentFiles/cs/any/Helpers.cs",
+      "evidence": null
     },
     {
       "rule": "C103",
@@ -108,7 +112,9 @@
       "package": "Fabrikam.Legacy",
       "version": "1.0.0",
       "path": "tools/init.ps1",
-      "message": "PowerShell script: tools/init.ps1 (+1 more file)"
+      "line": null,
+      "message": "PowerShell script: tools/init.ps1 (+1 more file)",
+      "evidence": null
     }
   ],
   "incomplete": []

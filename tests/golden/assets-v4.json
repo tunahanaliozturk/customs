@@ -114,7 +114,9 @@
       "package": "Contoso.Analyzers",
       "version": "1.0.4.0",
       "path": "analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll",
-      "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)"
+      "line": null,
+      "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)",
+      "evidence": null
     },
     {
       "rule": "C103",
@@ -122,7 +124,9 @@
       "package": "Fabrikam.Legacy",
       "version": "1.0.0",
       "path": "tools/init.ps1",
-      "message": "PowerShell script: tools/init.ps1 (+1 more file)"
+      "line": null,
+      "message": "PowerShell script: tools/init.ps1 (+1 more file)",
+      "evidence": null
     },
     {
       "rule": "C104",
@@ -130,7 +134,9 @@
       "package": "Fabrikam.Native",
       "version": "2.1.0",
       "path": "runtimes/linux-x64/native/libfabrikam.so",
-      "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)"
+      "line": null,
+      "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)",
+      "evidence": null
     }
   ],
   "incomplete": []

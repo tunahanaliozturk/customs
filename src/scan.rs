@@ -33,29 +33,54 @@ impl Severity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) enum FindingRule {
     C003,
+    C004,
     C101,
     C102,
     C103,
     C104,
     C105,
+    C201,
+    C202,
+    C203,
+    C204,
+    C205,
+    C206,
+    C207,
 }
 
 impl FindingRule {
     pub(crate) fn id(self) -> &'static str {
         match self {
             Self::C003 => "C003",
+            Self::C004 => "C004",
             Self::C101 => "C101",
             Self::C102 => "C102",
             Self::C103 => "C103",
             Self::C104 => "C104",
             Self::C105 => "C105",
+            Self::C201 => "C201",
+            Self::C202 => "C202",
+            Self::C203 => "C203",
+            Self::C204 => "C204",
+            Self::C205 => "C205",
+            Self::C206 => "C206",
+            Self::C207 => "C207",
         }
     }
 
     pub(crate) fn severity(self) -> Severity {
         match self {
-            Self::C003 => Severity::Warning,
-            Self::C101 | Self::C102 | Self::C103 | Self::C104 | Self::C105 => Severity::Note,
+            Self::C201 => Severity::Error,
+            Self::C003 | Self::C004 | Self::C203 | Self::C204 | Self::C205 | Self::C206 => {
+                Severity::Warning
+            }
+            Self::C101
+            | Self::C102
+            | Self::C103
+            | Self::C104
+            | Self::C105
+            | Self::C202
+            | Self::C207 => Severity::Note,
         }
     }
 }
@@ -78,7 +103,7 @@ impl GapRule {
 
 /// One row of `customs rules`: ID, default severity (none for a gap), and
 /// one line.
-pub(crate) const RULES: [(&str, Option<Severity>, &str); 8] = [
+pub(crate) const RULES: [(&str, Option<Severity>, &str); 16] = [
     (
         "C001",
         None,
@@ -93,6 +118,11 @@ pub(crate) const RULES: [(&str, Option<Severity>, &str); 8] = [
         "C003",
         Some(Severity::Warning),
         "An entry with `..`, an absolute path or a drive letter, two entries whose names are equal ignoring case, or a link in a package folder.",
+    ),
+    (
+        "C004",
+        Some(Severity::Warning),
+        "An MSBuild file that is not well-formed XML, has a DTD, or uses an encoding other than UTF-8 or UTF-16.",
     ),
     (
         "C101",
@@ -115,13 +145,44 @@ pub(crate) const RULES: [(&str, Option<Severity>, &str); 8] = [
         Some(Severity::Note),
         "contentFiles source code that will be compiled into the project.",
     ),
+    (
+        "C201",
+        Some(Severity::Error),
+        "UsingTask with a TaskFactory: CodeTaskFactory, RoslynCodeTaskFactory or any other.",
+    ),
+    (
+        "C202",
+        Some(Severity::Note),
+        "UsingTask with AssemblyFile: an assembly that MSBuild loads.",
+    ),
+    ("C203", Some(Severity::Warning), "Exec task."),
+    ("C204", Some(Severity::Warning), "DownloadFile task."),
+    (
+        "C205",
+        Some(Severity::Warning),
+        "A URL (http, https, ftp) in an attribute value or element text. Comments are ignored.",
+    ),
+    (
+        "C206",
+        Some(Severity::Warning),
+        "A base64-looking run of at least 200 characters.",
+    ),
+    (
+        "C207",
+        Some(Severity::Note),
+        "An Import that cannot be resolved inside the package.",
+    ),
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Finding {
     pub(crate) rule: FindingRule,
     pub(crate) path: Option<String>,
+    /// The 1-based line in the file as stored, or as decoded for UTF-16.
+    pub(crate) line: Option<u32>,
     pub(crate) message: String,
+    /// What the rule saw, as defined with the rule; cut at 240 characters.
+    pub(crate) evidence: Option<String>,
 }
 
 impl Finding {
@@ -129,7 +190,9 @@ impl Finding {
         Self {
             rule,
             path,
+            line: None,
             message,
+            evidence: None,
         }
     }
 }
@@ -341,6 +404,14 @@ mod tests {
             FindingRule::C103,
             FindingRule::C104,
             FindingRule::C105,
+            FindingRule::C004,
+            FindingRule::C201,
+            FindingRule::C202,
+            FindingRule::C203,
+            FindingRule::C204,
+            FindingRule::C205,
+            FindingRule::C206,
+            FindingRule::C207,
         ];
         for rule in finding_rules {
             let row = RULES.iter().find(|r| r.0 == rule.id()).unwrap();

@@ -5,6 +5,10 @@ contoso.analyzers 1.0.4
 
 contoso.build.tools 3.2.0
   note     C101  build assets: build/Contoso.Build.Tools.targets (+2 more files)
+  warning  C203  Exec task
+                 build/tasks/Fetch.targets:4  echo fixture, would fetch https://example.invalid/tool
+  warning  C205  URL
+                 build/tasks/Fetch.targets:4  https://example.invalid/tool
 
 contoso.shouting 1.0.0
   note     C101  build assets: BUILD/Contoso.Shouting.targets
@@ -18,5 +22,5 @@ fabrikam.legacy 1.0.0
 fabrikam.native 2.1.0
   note     C104  native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)
 
-0 errors, 0 warnings, 6 notes
-exit 0: no finding at or above --fail-on warning
+0 errors, 2 warnings, 6 notes
+exit 1: findings at or above --fail-on warning

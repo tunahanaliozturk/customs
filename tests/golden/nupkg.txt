@@ -1,7 +1,11 @@
 customs 0.0.0: 1 package from 1 input, all complete
 
-contoso.build.tools 3.2.0
+Contoso.Build.Tools 3.2.0
   note     C101  build assets: build/Contoso.Build.Tools.targets (+2 more files)
+  warning  C203  Exec task
+                 build/tasks/Fetch.targets:4  echo fixture, would fetch https://example.invalid/tool
+  warning  C205  URL
+                 build/tasks/Fetch.targets:4  https://example.invalid/tool
 
-0 errors, 0 warnings, 1 note
-exit 0: no finding at or above --fail-on warning
+0 errors, 2 warnings, 1 note
+exit 1: findings at or above --fail-on warning

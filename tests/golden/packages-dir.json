@@ -43,7 +43,7 @@
       "complete": true,
       "read": {
         "entries": 13,
-        "bytes": 0
+        "bytes": 319
       },
       "assets": [
         {
@@ -80,7 +80,7 @@
       "complete": true,
       "read": {
         "entries": 4,
-        "bytes": 0
+        "bytes": 12
       },
       "assets": [
         {
@@ -202,7 +202,9 @@
       "package": "contoso.analyzers",
       "version": "1.0.4",
       "path": "analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll",
-      "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)"
+      "line": null,
+      "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)",
+      "evidence": null
     },
     {
       "rule": "C101",
@@ -210,7 +212,29 @@
       "package": "contoso.build.tools",
       "version": "3.2.0",
       "path": "build/Contoso.Build.Tools.targets",
-      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)"
+      "line": null,
+      "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)",
+      "evidence": null
+    },
+    {
+      "rule": "C203",
+      "severity": "warning",
+      "package": "contoso.build.tools",
+      "version": "3.2.0",
+      "path": "build/tasks/Fetch.targets",
+      "line": 4,
+      "message": "Exec task",
+      "evidence": "echo fixture, would fetch https://example.invalid/tool"
+    },
+    {
+      "rule": "C205",
+      "severity": "warning",
+      "package": "contoso.build.tools",
+      "version": "3.2.0",
+      "path": "build/tasks/Fetch.targets",
+      "line": 4,
+      "message": "URL",
+      "evidence": "https://example.invalid/tool"
     },
     {
       "rule": "C101",
@@ -218,7 +242,9 @@
       "package": "contoso.shouting",
       "version": "1.0.0",
       "path": "BUILD/Contoso.Shouting.targets",
-      "message": "build assets: BUILD/Contoso.Shouting.targets"
+      "line": null,
+      "message": "build assets: BUILD/Contoso.Shouting.targets",
+      "evidence": null
     },
     {
       "rule": "C105",
@@ -226,7 +252,9 @@
       "package": "contoso.sources",
       "version": "1.1.0",
       "path": "contentFiles/cs/any/Helpers.cs",
-      "message": "contentFiles source: contentFiles/cs/any/Helpers.cs"
+      "line": null,
+      "message": "contentFiles source: contentFiles/cs/any/Helpers.cs",
+      "evidence": null
     },
     {
       "rule": "C103",
@@ -234,7 +262,9 @@
       "package": "fabrikam.legacy",
       "version": "1.0.0",
       "path": "tools/init.ps1",
-      "message": "PowerShell script: tools/init.ps1 (+1 more file)"
+      "line": null,
+      "message": "PowerShell script: tools/init.ps1 (+1 more file)",
+      "evidence": null
     },
     {
       "rule": "C104",
@@ -242,7 +272,9 @@
       "package": "fabrikam.native",
       "version": "2.1.0",
       "path": "runtimes/linux-x64/native/libfabrikam.so",
-      "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)"
+      "line": null,
+      "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)",
+      "evidence": null
     }
   ],
   "incomplete": []
