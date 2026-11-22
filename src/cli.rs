@@ -173,7 +173,7 @@ fn parse_scan(parser: &mut lexopt::Parser) -> Result<Command, Usage> {
 }
 
 /// Runs customs with the given arguments, without the program name.
-#[must_use]
+#[must_use = "the exit code is the result of the scan"]
 pub fn run(args: impl IntoIterator<Item = OsString>) -> ExitCode {
     let result = parse(args).and_then(|command| execute(command, &Limits::default()));
     match result {
