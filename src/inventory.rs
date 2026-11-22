@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
+use crate::graph::lower_invariant;
 use crate::package::{Entry, Files, Limits, PackagePath};
 use crate::scan::{Finding, FindingRule, Outcome};
 
@@ -91,8 +92,10 @@ const NEVER_READ: [&str; 28] = [
     "RESX", "SHA512", "SVG", "TARGETS", "TXT",
 ];
 
-/// Upper-cases one character the way .NET's `OrdinalIgnoreCase` does: by the
-/// simple mapping, so `ı` matches `I` and `ß` stays `ß`.
+/// Upper-cases one character by the simple mapping, so `ı` becomes `I` and
+/// `ß` stays `ß`. Used only for case collisions (C003), where it is wider
+/// than what NTFS or .NET would merge: a warning slightly too wide is the
+/// right side to err on.
 fn fold(c: char) -> char {
     let mut upper = c.to_uppercase();
     match (upper.next(), upper.next()) {
@@ -101,10 +104,11 @@ fn fold(c: char) -> char {
     }
 }
 
-/// Compares a name with an upper-case ASCII literal as `NuGet` does,
-/// ignoring case.
+/// Compares a name with an upper-case ASCII literal as `NuGet` does, with
+/// `OrdinalIgnoreCase`. For an ASCII literal that is an ASCII
+/// case-insensitive comparison: `buıld` with a dotless i is not `BUILD`.
 fn is(name: &str, upper_literal: &str) -> bool {
-    name.chars().map(fold).eq(upper_literal.chars())
+    name.eq_ignore_ascii_case(upper_literal)
 }
 
 fn folded(name: &str) -> String {
@@ -115,7 +119,7 @@ fn classify(path: &PackagePath, id: &str) -> Class {
     let segments: Vec<&str> = path.as_str().split('/').collect();
     let file = segments.last().copied().unwrap_or_default();
     let (stem, extension) = file.rsplit_once('.').unwrap_or((file, ""));
-    let extension = folded(extension);
+    let extension = extension.to_ascii_uppercase();
     let ext = |candidates: &[&str]| candidates.contains(&extension.as_str());
     let first = segments.first().copied().unwrap_or_default();
     let depth = segments.len();
@@ -135,7 +139,7 @@ fn classify(path: &PackagePath, id: &str) -> Class {
     } else if let Some(folder) = build_folder {
         ext(&["PROPS", "TARGETS"]).then(|| Asset::Build {
             folder,
-            entry_point: depth <= 3 && folded(stem) == folded(id),
+            entry_point: depth <= 3 && lower_invariant(stem) == lower_invariant(id),
         })
     } else if is(first, "ANALYZERS") {
         ext(&["DLL"]).then_some(Asset::Analyzer)
@@ -327,7 +331,6 @@ mod tests {
             "build/Contoso.Tools.targets",
             "BUILD/contoso.tools.TARGETS",
             "Build/net8.0/Contoso.Tools.props",
-            "buıld/Contoso.Tools.targets",
         ] {
             assert!(
                 matches!(
@@ -354,7 +357,12 @@ mod tests {
                 ..
             })
         ));
-        // A name that only looks alike after a full, not simple, mapping.
+        // .NET's OrdinalIgnoreCase does not take a dotless i for an i, so
+        // NuGet does not use this folder, and neither does customs.
+        assert!(!matches!(
+            class("buıld/Contoso.Tools.targets"),
+            Class::Asset(_)
+        ));
         assert!(!matches!(
             class("buildß/Contoso.Tools.targets"),
             Class::Asset(_)

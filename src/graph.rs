@@ -25,6 +25,23 @@ fn error(message: impl Into<String>) -> ParseError {
     ParseError(message.into())
 }
 
+/// Lowercases character by character, like .NET's `ToLowerInvariant`: no
+/// rule that looks at the neighbours (such as a final sigma), and a
+/// character whose lowercase is more than one character is kept as it is.
+/// .NET maps some of those, such as `İ`, to one character, so an ID with
+/// them may be looked up in the wrong folder and show as C001.
+pub(crate) fn lower_invariant(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            let mut lower = c.to_lowercase();
+            match (lower.next(), lower.next()) {
+                (Some(single), None) => single,
+                _ => c,
+            }
+        })
+        .collect()
+}
+
 /// A package ID as written. Compared and hashed on its lowercase form, as
 /// `NuGet` compares IDs without regard to case.
 #[derive(Debug, Clone)]
@@ -45,10 +62,10 @@ impl PackageId {
         if valid {
             Ok(Self {
                 text: text.to_owned(),
-                lower: text.to_lowercase(),
+                lower: lower_invariant(text),
             })
         } else {
-            Err(error(format!("{text:?} is not a valid package ID")))
+            Err(error(format!("\"{text}\" is not a valid package ID")))
         }
     }
 
@@ -100,7 +117,7 @@ pub(crate) struct PackageVersion {
 
 impl PackageVersion {
     pub(crate) fn new(text: &str) -> Result<Self, ParseError> {
-        let bad = || error(format!("{text:?} is not a valid package version"));
+        let bad = || error(format!("\"{text}\" is not a valid package version"));
         let (release, metadata) = match text.split_once('+') {
             Some((release, metadata)) => (release, Some(metadata)),
             None => (text, None),
@@ -122,7 +139,8 @@ impl PackageVersion {
             if part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()) {
                 return Err(bad());
             }
-            numbers.push(part.parse::<u32>().map_err(|_| bad())?);
+            // NuGet keeps each part in an Int32.
+            numbers.push(part.parse::<i32>().map_err(|_| bad())?);
         }
         if numbers.len() > 4 {
             return Err(bad());
@@ -133,7 +151,7 @@ impl PackageVersion {
         }
         let mut normalised = numbers
             .iter()
-            .map(u32::to_string)
+            .map(i32::to_string)
             .collect::<Vec<_>>()
             .join(".");
         if let Some(label) = label {
@@ -267,7 +285,11 @@ fn parse_lock(value: serde_json::Value) -> Result<Graph, ParseError> {
                 "Transitive" => Dependency::Transitive,
                 "CentralTransitive" => Dependency::CentralTransitive,
                 "Project" => continue,
-                other => return Err(error(format!("{name}: unknown dependency type {other:?}"))),
+                other => {
+                    return Err(error(format!(
+                        "{name}: unknown dependency type \"{other}\""
+                    )));
+                }
             };
             let resolved = entry
                 .resolved
@@ -355,7 +377,7 @@ fn parse_assets(value: serde_json::Value) -> Result<Graph, ParseError> {
         }
         let (name, version) = key
             .split_once('/')
-            .ok_or_else(|| error(format!("{key:?} is not of the form ID/version")))?;
+            .ok_or_else(|| error(format!("\"{key}\" is not of the form ID/version")))?;
         let dependency = if direct.contains(&name.to_lowercase()) {
             Dependency::Direct
         } else {
@@ -373,7 +395,7 @@ fn parse_assets(value: serde_json::Value) -> Result<Graph, ParseError> {
         for download in &spec.download_dependencies {
             let version = exact_version(&download.version).ok_or_else(|| {
                 error(format!(
-                    "{}: PackageDownload version {:?} is not an exact version",
+                    "{}: PackageDownload version \"{}\" is not an exact version",
                     download.name, download.version
                 ))
             })?;
@@ -486,6 +508,26 @@ mod tests {
         ] {
             assert!(PackageVersion::new(text).is_err(), "{text:?}");
         }
+    }
+
+    #[test]
+    fn a_version_part_must_fit_in_an_int32() {
+        assert!(PackageVersion::new("2147483647.0.0").is_ok());
+        assert!(PackageVersion::new("2147483648.0.0").is_err());
+        assert!(PackageVersion::new("1.0.0.4294967295").is_err());
+    }
+
+    #[test]
+    fn ids_are_lowercased_per_character_as_to_lower_invariant_does() {
+        // No final-sigma rule: every capital sigma becomes a medial sigma.
+        assert_eq!(lower_invariant("ΣΑΣ"), "σασ");
+        assert_eq!(
+            PackageId::new("Contoso.ΣΑΣ").unwrap().lower(),
+            "contoso.σασ"
+        );
+        // A character with a multi-character lowercase is kept.
+        assert_eq!(lower_invariant("İ"), "İ");
+        assert_eq!(lower_invariant("Contoso.Tools"), "contoso.tools");
     }
 
     #[test]
