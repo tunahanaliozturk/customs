@@ -5,3 +5,6 @@ allow-panic-in-tests = true
 # Both are proc-macro build dependencies; nothing of either ends up in the
 # binary twice. Remove this when zeroize_derive moves to syn 3.
 allowed-duplicate-crates = ["syn"]
+# Product names that doc comments use as plain words. ".." keeps clippy's
+# default list.
+doc-valid-idents = ["MSBuild", "NuGet", ".."]
