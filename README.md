@@ -8,7 +8,37 @@ At a border, customs officers open the crates and list what is inside before any
 
 ## Status
 
-Planning. Nothing is built yet: the binary only prints its name and version. The repository holds the design and the roadmap.
+Milestone M1 of seven is done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder, and lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code. It says so, with exit code 3, when it could not look at everything. It does not read inside MSBuild files (M2) or assemblies (M3) yet, it does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
+
+## Try it
+
+You need Rust 1.89 or newer. The repository has made-up fixture packages to scan:
+
+```
+git clone https://github.com/tunahanaliozturk/customs
+cd customs/tests/fixtures
+cargo run --release --quiet -- scan lock-v1/packages.lock.json --packages-dir packages
+```
+
+```
+customs 0.0.0: 4 packages from 1 input, all complete
+
+Contoso.Analyzers 1.0.4  (direct)
+  note     C102  analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)
+
+Contoso.Build.Tools 3.2.0  (direct)
+  note     C101  build assets: build/Contoso.Build.Tools.targets (+2 more files)
+
+Fabrikam.Native 2.1.0  (transitive)
+  note     C104  native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)
+
+0 errors, 0 warnings, 3 notes
+exit 0: no finding at or above --fail-on warning
+```
+
+Add `--format json` for every file of every package, by kind. On your own project, run `dotnet restore` first, then point customs at the project folder, its `packages.lock.json` or its `obj/project.assets.json`. `customs rules` lists the rules and `customs --help` the options.
+
+## Documents
 
 - [docs/design.md](docs/design.md): the user's view, the architecture, the hard parts and how each claim will be tested.
 - [docs/roadmap.md](docs/roadmap.md): milestones, each with an exit test.
@@ -41,7 +71,7 @@ The one mitigation NuGet offers is to write `ExcludeAssets` by hand on each `Pac
 - Run, evaluate or load anything. It does not know which `Condition` is true or what a `$(Property)` expands to; it reports what is written.
 - Find malicious logic in ordinary library code. The Socket and Hacker News cases above live in normal methods and would pass.
 - See through obfuscation beyond a list of known markers, or decide whether code is malicious. A finding says "this runs at build time", not "this is malware".
-- Cover MSBuild project SDKs, `PackageDownload`, `dotnet tool` packages, or `contentFiles` source code. These are listed in the design as known gaps.
+- Cover MSBuild project SDKs, `dotnet tool` packages, `PackageDownload` items when it reads a lock file (an assets file lists them, and customs reads them there), or the content of `contentFiles` source code. These are listed in the design as known gaps.
 - Use a reputation service or a hosted database, or change your project.
 
 ## Licence

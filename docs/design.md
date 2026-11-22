@@ -59,7 +59,7 @@ This list goes into the README and the `--help` text. Each item has a test that 
 - **Obfuscation beyond the marker list.** A renamed or custom obfuscator passes. Markers are names in metadata, and an attacker can remove or fake them.
 - **What a module initialiser does.** customs reports that one exists and how large its body is, not what it calls.
 - **Run-time behaviour.** Anything decided at run time: downloaded code, reflection, loading of other assemblies.
-- **Packages outside the graph files.** MSBuild project SDKs (`<Project Sdk="Name/Version">`), `PackageDownload` items and `dotnet tool` packages may not appear in `packages.lock.json` or in the `libraries` of `project.assets.json` (to be confirmed, see open questions). `contentFiles` source code, which is compiled into the user's assembly, is listed in the inventory but not inspected.
+- **Packages outside the graph files.** MSBuild project SDKs (`<Project Sdk="Name/Version">`) and `dotnet tool` packages do not appear in `packages.lock.json` or in `project.assets.json`. `PackageDownload` items appear only in the assets file, so a scan of a lock file does not see them (open question 12). `contentFiles` source code, which is compiled into the user's assembly, is listed in the inventory but not inspected.
 - **A cache that was changed after restore.** customs reads the extracted files in the global packages folder, which is what MSBuild imports. If something changed those files, customs reports the changed files, but it does not compare them against the original package unless asked to with `--verify-cache`.
 - **Packages it cannot read.** These are reported as incomplete, never skipped silently.
 
@@ -77,12 +77,14 @@ customs scan [PATH...] [--packages-dir DIR] [--baseline FILE] [--write-baseline 
 
 Inputs, detected by name and content:
 
-- `packages.lock.json` (format versions 1 and 2): every package entry of type `Direct`, `Transitive` or `CentralTransitive`, for every target framework. `Project` entries are skipped.
-- `project.assets.json` (versions 3 and 4): every `libraries` entry of type `package`. The package folders come from its `packageFolders`, in order.
-- A `.nupkg` file: that one package, read from the archive.
+- `packages.lock.json` (format versions 1 and 2): every package entry of type `Direct`, `Transitive` or `CentralTransitive`, for every target framework. `Project` entries are skipped. NuGet 7.6 added a format version 3 for projects whose target framework aliases resolve to the same framework ([PackagesLockFileFormat.cs](https://github.com/NuGet/NuGet.Client/blob/dev/src/NuGet.Core/NuGet.ProjectModel/ProjectLockFile/PackagesLockFileFormat.cs), read 2026-11-22). It has a different shape, and customs refuses it with exit 2 until a milestone reads it.
+- `project.assets.json` (versions 3 and 4): every `libraries` entry of type `package`, and every `PackageDownload` item in `project.frameworks.*.downloadDependencies`. The package folders come from its `packageFolders`, in order. A relative folder, which NuGet never writes but the fixtures use, is taken from the directory of the assets file.
+- A `.nupkg` file: that one package, read from the archive. Until M2 brings an XML parser, the ID and version come from the file name (`contoso.tools.1.2.0.nupkg`), split at the first dot after which the rest is a valid version. M2 takes them from the nuspec.
 - `--packages-dir DIR` alone: every package version in a global packages folder.
 
-For a lock file, packages are looked up in `NUGET_PACKAGES` if set, else `~/.nuget/packages` (`%USERPROFILE%\.nuget\packages` on Windows), else in `--packages-dir`. A package that is in the graph and not on disk makes the scan incomplete. `scan` never downloads; run `dotnet restore` first.
+A package is looked up in `--packages-dir` first, if given. After that, for a lock file, in `NUGET_PACKAGES` if set, else `~/.nuget/packages` (`%USERPROFILE%\.nuget\packages` on Windows); for an assets file, in its `packageFolders`. A folder counts only if it holds `.nupkg.metadata`, which NuGet writes last when it extracts a package, or the `.nupkg.sha512` file that older versions wrote. A package that is in the graph and not on disk makes the scan incomplete. `scan` never downloads; run `dotnet restore` first.
+
+The first draft of this section looked in `--packages-dir` last. A flag the user typed that is consulted only when the defaults fail would surprise them, so M1 changed the order.
 
 Example, on a made-up package (illustrative, not real output):
 
@@ -108,7 +110,9 @@ Contoso.Analyzers 1.0.4  (direct)
 exit 1: findings at or above --fail-on warning
 ```
 
-Text from packages is printed escaped: control characters, bidirectional overrides and non-printing characters are shown as `\u{...}`. See [Security](#security-considerations).
+Text from packages is printed escaped: control characters, bidirectional overrides and non-printing characters are shown as `\u{...}`, and a backslash as `\\`. See [Security](#security-considerations).
+
+Since M1 the first line reads `customs 0.1.0: 214 packages from 1 input, all complete`, or gives the number of gaps in place of "all complete". In text, a package with no finding and no gap is not listed; JSON lists every package.
 
 `--write-baseline FILE` writes every current finding to a baseline file and exits 0. `--baseline FILE` hides findings whose fingerprint is in the file, and counts them.
 
@@ -170,15 +174,15 @@ Default severities are a starting point. The benign corpus decides the final one
 
 | ID | Severity | What |
 | --- | --- | --- |
-| C001 | (incomplete) | A package in the graph was not found on disk or could not be downloaded. |
+| C001 | (incomplete) | A package in the graph was not found on disk or could not be downloaded, or a part of it that a rule needs could not be read: an archive that is not a zip, an entry with a compression method other than stored or deflate, a file the system refuses to open. |
 | C002 | (incomplete) | A limit stopped reading. The message names the limit and the file. |
-| C003 | warning | An archive entry with `..`, an absolute path or a drive letter, or two entries whose names are equal ignoring case. |
+| C003 | warning | An archive entry with `..`, an absolute path or a drive letter, after `%XX` escapes are decoded and `\` is read as `/`, as NuGet does on extraction (empty and `.` segments are dropped, as on extraction, not reported: a published package names entries `analyzers/cs//A.dll`); two entries whose names are equal ignoring case; two entries with the same name; a name that is not UTF-8. In an extracted folder: a symbolic link or junction (not followed), or anything that is not a regular file or a folder. The entry is left out of the inventory. |
 | C004 | warning | An MSBuild file that is not well-formed XML, has a DTD, or uses an encoding other than UTF-8 or UTF-16. |
 | C005 | error | A downloaded package, or a cached one with `--verify-cache`, does not match the content hash in the graph file. |
 | C101 | note | Build assets: props or targets in `build/`, `buildTransitive/`, `buildMultitargeting/` or the old `buildCrossTargeting/`. |
 | C102 | note | Analyzer or source generator assembly in `analyzers/`. |
 | C103 | note | PowerShell script in `tools/`. |
-| C104 | note | Native binary: a PE, ELF or Mach-O file that is not a managed assembly. |
+| C104 | note | Native binary: a PE, ELF or Mach-O file that is not a managed assembly. Until M3, which reads the CLI header, customs cannot tell a native PE from a managed one: a `.dll` or `.exe` under `lib/`, `ref/` or `runtimes/*/lib/` counts as managed, and C104 covers PE, ELF and Mach-O files in `runtimes/*/native/` and ELF and Mach-O files anywhere. A native PE elsewhere, such as `tools/protoc.exe`, is not reported until M3. The format comes from the first 64 bytes of the file. |
 | C105 | note | `contentFiles` source code that will be compiled into the project. |
 | C201 | error | `UsingTask` with a `TaskFactory`: `CodeTaskFactory`, `RoslynCodeTaskFactory` or any other. |
 | C202 | note | `UsingTask` with `AssemblyFile`: an assembly that MSBuild loads. That assembly gets the C3xx checks as build-time code. The path is often a property (Grpc.Tools 2.60.0 uses `$(_Protobuf_MsBuildAssembly)`), so every managed assembly under `build*/` or `tools/` is treated as build-time code too. |
@@ -199,8 +203,11 @@ C3xx findings in a build-time assembly (an analyzer or an assembly named by `Usi
 
 ### Output formats
 
-- **text**: grouped by package, as above. Colour only on a terminal and unless `NO_COLOR` is set.
+- **text**: grouped by package, as above. Colour only on a terminal and unless `NO_COLOR` is set. M1 prints no colour at all.
 - **json**: one object: `schema` (integer, starts at 1), `tool` (name, version), `inputs`, `packages` (ID, version, where it was read from, whether it is complete), `findings` (rule, severity, package, version, path, line, message, evidence, fingerprint, whether the baseline accepted it) and `incomplete`. Field names do not change within a schema version.
+
+  Schema 1 as M1 writes it: `inputs` holds `path`, `kind` (`lock`, `assets`, `nupkg`, `packages_dir`, or null for a graph over the size limit) and `format_version`. Each of `packages` holds `id`, `version`, `dependency` (`direct`, `transitive`, `central_transitive`, `download`, or null for a `.nupkg` or a packages folder), `frameworks`, `source`, `complete`, `read` (`entries` listed and `bytes` read from entries, the budget of [Limits](#limits)) and `assets`, the inventory: every file that is not plain data, with its `path`, `kind` (`build`, `analyzer`, `powershell`, `native`, `managed`, `content_source`) and the kind's details. Each finding holds `rule`, `severity`, `package`, `version`, `path` and `message`. Each gap in `incomplete` holds `rule`, `input`, `package`, `version`, `path` and `message`. The finding fields `line`, `evidence`, `fingerprint` and `accepted` are added by the milestones whose rules fill them (M2, M4); adding a field does not change the schema number.
+- **Inventory findings** (C101 to C105) are one per rule and package: the path of the first file, an entry point first for C101, and how many more there are. The full list is in the JSON `assets`.
 - **sarif**: SARIF 2.1.0 ([OASIS](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)). One `run`, rules from the table above, `level` from the severity. The physical location is the graph file and the line of the package's entry in it, because that is the file in the user's repository; the path inside the package is in the message and in `properties`. Whether GitHub code scanning displays this well is an open question.
 
 ### Baseline file
@@ -284,6 +291,16 @@ Starting values. Each has a test with an input just over it. Reaching one produc
 
 Entries that no rule needs to read, such as documentation, images and large native files, are listed by name and size and never decompressed. That keeps a scan of a graph with large runtime packages cheap.
 
+How M1 applies them:
+
+- **What is read.** M1 reads only the first 64 bytes of an entry, to tell PE, ELF and Mach-O apart. It reads the entries in `runtimes/*/native/` and every entry that is not classified by its path and whose extension is not on a short list of data types (text, XML, JSON, Markdown, images, PDB, signatures, MSBuild and source files).
+- **Entries.** The `zip` crate allocates for every entry the central directory declares. So before the crate parses anything, customs reads every end of central directory record in the last 65,557 bytes, classic and zip64, and refuses the archive if any of them declares more than 50,000 entries. A folder is walked until the 50,001st file.
+- **Ratio.** An entry whose declared size is more than 200 times its compressed size is not read. An entry that declares less is read through a limit of 200 times its compressed size plus one byte; getting that extra byte is a C002 gap. The zip crate never reads more compressed bytes than the declared compressed size, so the ratio holds on the bytes that come out, whatever the header claims.
+- **The budget.** Every entry listed and every byte read from an entry is counted per package, and a read that would pass 512 MiB is refused before it starts. The JSON report shows the count as `read`. The tests assert it: the zip bomb and the 50,001-entry archive end with 0 bytes read, and the archive whose header understates its size ends with at most 64.
+- **Measured on 2026-11-22**, over the 4,393 `.nupkg` files in a local cache: at most 2,051 entries in one package, no entry above 200 to 1, only stored and deflate entries, and 394 entry names with `%XX` escapes. The limits leave room for real packages.
+
+customs forbids `unsafe`, so it cannot install a counting global allocator to measure peak memory. The test asserts what the code controls: the bytes it reads and the entries it lists.
+
 ## The hard parts
 
 ### Hostile archives and files
@@ -295,10 +312,10 @@ Zip bombs, path traversal and absurd entry counts are handled by the limits abov
 If customs and NuGet disagree about the files in a package, an attacker can show customs one thing and MSBuild another. Three choices reduce that:
 
 1. When a package is in the global packages folder, customs reads the extracted files, because those are the files MSBuild imports. It reads the archive only for a `.nupkg` input and for downloads in `diff`. See [ADR 0005](adr/0005-read-what-msbuild-imports.md).
-2. Folder names are matched case-insensitively (`Build/`, `BUILD/`), and entries whose names collide ignoring case are reported (C003).
+2. Folder names are matched case-insensitively (`Build/`, `BUILD/`), and entries whose names collide ignoring case are reported (C003). The comparison folds case as .NET's `OrdinalIgnoreCase` does, one character to one by the simple upper-case mapping, so `buıld/` with a dotless i is a build folder to NuGet and to customs. A plain ASCII comparison would miss it.
 3. With `--verify-cache`, the cached archive is compared with the extracted files and with the graph's hash.
 
-What remains: the `zip` crate and .NET's `System.IO.Compression` may disagree on malformed archives, for example data before the first entry, two end-of-central-directory records, or a local header that contradicts the central directory. M6 builds such archives and records what each reader does. Where they disagree, customs reports the archive as C003 instead of choosing.
+What remains: the `zip` crate and .NET's `System.IO.Compression` may disagree on malformed archives, for example data before the first entry, two end-of-central-directory records, or a local header that contradicts the central directory. M6 builds such archives and records what each reader does. Where they disagree, customs reports the archive as C003 instead of choosing. One case belongs to M6 for memory too: if every end of central directory record in the last 65,557 bytes is invalid to the `zip` crate, it searches further back than customs' entry-count check, and could parse an earlier record with a larger count.
 
 ### MSBuild without evaluation
 
@@ -387,23 +404,24 @@ Linux, macOS and Windows, x86_64 and aarch64 where CI has runners. CI tests on a
 
 ## Dependencies
 
-Planned, none added yet. Versions and licences checked on crates.io on 2026-11-22.
+Versions and licences checked on crates.io on 2026-11-22. M1 added `zip`, `serde`, `serde_json` and `lexopt`, and `tempfile` for tests; the others are still planned.
 
 | Crate | Version | Licence | Why |
 | --- | --- | --- | --- |
-| `zip` | 9.8.1 | MIT | Reading `.nupkg` archives. Only the `deflate` feature; other methods are reported. Needs Rust 1.89. |
+| `zip` | 9.8.1 | MIT | Reading `.nupkg` archives. Only the `deflate-flate2-zlib-rs` feature: the `deflate` feature also pulls in `zopfli`, which only compresses. Other methods are reported as C001 when an entry needs reading. Needs Rust 1.89. Added at M1. |
 | `roxmltree` | 0.21.2 | MIT OR Apache-2.0 | MSBuild XML with positions, DTDs off by default, a node limit. Read-only, which is all customs needs. |
 | `object` | 0.41.0 | Apache-2.0 OR MIT | PE headers, sections, the CLI data directory, and telling PE, ELF and Mach-O apart. Only read features. |
-| `serde`, `serde_json` | 1.0.229, 1.0.154 | MIT OR Apache-2.0 | Lock and assets files, baseline, JSON and SARIF output. |
-| `lexopt` | 0.3.2 | MIT | Argument parsing for three commands. Small and without dependencies, unlike clap. |
+| `serde`, `serde_json` | 1.0.229, 1.0.154 | MIT OR Apache-2.0 | Lock and assets files, baseline, JSON and SARIF output. `serde_json` with `preserve_order`, because the package folders of an assets file are searched in the order it lists them; that feature uses `indexmap`, which `zip` already brings. Added at M1. |
+| `lexopt` | 0.3.2 | MIT | Argument parsing for three commands. Small and without dependencies, unlike clap. Added at M1. |
 | `sha2` | 0.11.1 | MIT OR Apache-2.0 | SHA-512 content hashes and SHA-256 fingerprints. Needs Rust 1.88. |
 | `unicode-security` | 0.1.3 | MIT/Apache-2.0 | UTS #39 confusable skeletons for C402. |
 | `ureq` | 3.5.2 | MIT OR Apache-2.0 | Blocking HTTPS for `diff` downloads, behind the `fetch` feature. No async runtime. |
 | `proptest` (dev) | | MIT OR Apache-2.0 | Property tests of the parsers. |
+| `tempfile` (dev) | 3.27.0 | MIT OR Apache-2.0 | Test directories with unpredictable names. Added at M1. |
 
 Not planned: `dotscope` (ADR 0002), `yara-x` (ADR 0003), `clap` (more than three commands need), `serde-sarif` (the subset of SARIF needed is small and its last release was 2025-05-09), a string distance crate (optimal string alignment is a few lines).
 
-The minimum Rust version rises from 1.85 to 1.89 when `zip` is added at M1. The CI MSRV job moves with it.
+The minimum Rust version rose from 1.85 to 1.89 when `zip` was added at M1, and the CI MSRV job moved with it.
 
 ## Open questions
 
@@ -413,13 +431,19 @@ Things the design depends on that could not be confirmed on 2026-11-22. Each is 
 2. Does the lock file's `contentHash` equal the assets file's `sha512` and the `.nupkg.metadata` content hash for signed packages? Assets and metadata agreed on two signed packages; the lock file was not checked. (M5)
 3. The exact algorithm for the signed-package content hash, reproduced from NuGet's source and tested against the cache. (M5)
 4. Does NuGet match the `build`, `buildTransitive` and `analyzers` folder names case-insensitively on Linux and macOS as on Windows? customs matches case-insensitively either way; the answer decides whether a mismatch deserves its own finding. (M1)
+
+   **Settled at M1, 2026-11-22: yes, on every system.** NuGet picks a package's assets with the patterns of its content model, and a literal part of a pattern, such as `build/`, matches with `string.Compare(..., StringComparison.OrdinalIgnoreCase)` ([`PatternExpression.LiteralSegment.TryMatch` in Parser.cs](https://github.com/NuGet/NuGet.Client/blob/dev/src/NuGet.Core/NuGet.Packaging/ContentModel/Infrastructure/Parser.cs), read 2026-11-22). The comparison does not depend on the operating system. A folder in other case is therefore what NuGet uses, not a mismatch, and gets no finding of its own; the local cache read on 2026-11-22 holds a real package whose folder is `buildtransitive` in lower case. This is read from the source, not seen end to end: a restore of such a package on Linux or macOS was not run.
 5. Does Visual Studio 2026 still run `tools/init.ps1` for PackageReference projects? The NuGet docs say only that `tools` is on the Package Manager Console's `PATH`. C103 stays a note until this is known. (M2)
 6. Where do `zip` and `System.IO.Compression` disagree on malformed archives? (M6)
 7. The search API parameter `sortBy=totalDownloads-desc` is not in the documentation. On 2026-11-22 it worked, and the default order without a query was the same for the first five results. The list script records which one it used. (M4)
 8. How GitHub code scanning shows SARIF results whose location is a line in a lock file. (M4)
 9. The dependency tree of `zip` with only `deflate`, and of `ureq` with its default TLS, under `cargo deny` with this repository's licence list. (M1, M5)
+
+   **The `zip` half, settled at M1, 2026-11-22**, from `cargo tree -e normal --target all` and the licences in `cargo metadata`; `cargo deny` was not installed on the machine, and CI runs it after the push. With `deflate-flate2-zlib-rs`, `zip` 9.8.1 brings `constant_time_eq` 0.6.1 (CC0-1.0 OR MIT-0 OR Apache-2.0), `crc32fast` 1.5.5, `flate2` 1.1.11, `getrandom` 0.4.3, `indexmap` 2.14.2 with `hashbrown` 0.17.2 and `equivalent` 1.0.3, `memchr` 2.8.3 (Unlicense OR MIT), `typed-path` 0.13.0, `zeroize` 1.9.2 with `zeroize_derive` 1.5.0, and `zlib-rs` 0.6.8 (Zlib); on macOS and the BSDs `nix` 0.32.0 (MIT) with `bitflags` and `libc`; on Windows `windows-sys` 0.61.2 and `windows-link`; on wasm32 the `wasm-bindgen` crates and `js-sys`, and `r-efi` 6.0.0 (MIT OR Apache-2.0 OR LGPL-2.1-or-later) for UEFI. Every crate not named with a licence here is MIT OR Apache-2.0. Each licence expression has a choice inside the `deny.toml` list, so the licence check should pass. `cargo deny` warns, without failing, on one duplicate: `syn` 2 for `zeroize_derive` and `syn` 3 for `serde_derive`, both build-time only; `clippy.toml` allows that one duplicate for the same reason.
 10. Which obfuscator markers are reliable. Each needs a real sample before it goes into the list. Candidate markers come from public detection code and vendor documentation; customs copies names, not code. (M3)
 11. How large the 300-package benign corpus is to download, and whether it fits in the GitHub Actions cache. (M2)
 12. Do `PackageDownload` items and project SDK packages appear in the assets or lock file? If they do, they are scanned; if not, they stay in "cannot see". (M1)
+
+   **Settled at M1, 2026-11-22.** `PackageDownload` items appear in the assets file, in `project.frameworks.<framework>.downloadDependencies` with an exact range such as `[10.0.15, 10.0.15]`, and not in `libraries` or `targets`. Of 1,880 assets files on a local machine, 179 had them, all runtime packs and compiler packs. They do not appear in the lock file: NuGet builds the lock file from the `targets` of the assets file only ([PackagesLockFileBuilder.cs](https://github.com/NuGet/NuGet.Client/blob/dev/src/NuGet.Core/NuGet.Commands/PackagesLockFileBuilder.cs), read 2026-11-22). So customs scans them from an assets file, as dependency `download`, and they stay in "cannot see" for a lock file. A project SDK package named as `<Project Sdk="Name/Version">` does not appear in either file: in local projects that use such an SDK, the packages it adds as `PackageReference` items are in `libraries`, and the SDK package itself is in none of `libraries`, `targets` and `downloadDependencies`. It stays in "cannot see".
 13. How deep an element nesting roxmltree accepts before it fails, and whether that failure is clean. (M6)
 14. Does MSBuild accept DTDs and UTF-16 in imported files? If it rejects them, C004 could drop to note, since such a file would break the build. (M2)
