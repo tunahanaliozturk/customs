@@ -8,7 +8,7 @@ At a border, customs officers open the crates and list what is inside before any
 
 ## Status
 
-Milestones M1 and M2 of seven are done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder. It lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code, and it reads every MSBuild file of every package for inline tasks, `Exec`, `DownloadFile`, URLs and long base64 strings, at file and line, following literal imports from the entry points. It says so, with exit code 3, when it could not look at everything. It does not read assemblies (M3) yet, it does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
+Milestones M1 and M2 of seven are done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder. It lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code, and it reads every `.props`, `.targets` and `.tasks` file of every package, and any file an import reaches from them, for inline tasks, `Exec`, `DownloadFile`, URLs and long base64 strings, at file and line, following literal imports from the entry points. It says so, with exit code 3, when it could not look at everything. It does not read assemblies (M3) yet, it does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
 
 ## Try it
 
