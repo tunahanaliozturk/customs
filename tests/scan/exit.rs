@@ -91,12 +91,13 @@ fn a_zip_bomb_ends_as_a_gap_without_being_decompressed() -> TestResult {
 
 #[test]
 fn a_declared_uncompressed_size_is_never_trusted() -> TestResult {
-    // The same bomb, but both headers claim the entry is 64 bytes long, so
-    // the ratio looks harmless. The read still stops at the cap.
+    // The same bomb, but both headers claim the entry is 200 bytes long, so
+    // the ratio looks harmless. The read still stops at the 64-byte cap; code
+    // that read what the header declares would read 200.
     let zeros = vec![0_u8; 16 * 1024 * 1024];
     let mut archive = zip(&[("runtimes/linux-x64/native/libbomb.so", &zeros)])?;
-    patch_u32(&mut archive, &[0x50, 0x4b, 0x03, 0x04], 22, 64)?;
-    patch_u32(&mut archive, &[0x50, 0x4b, 0x01, 0x02], 24, 64)?;
+    patch_u32(&mut archive, &[0x50, 0x4b, 0x03, 0x04], 22, 200)?;
+    patch_u32(&mut archive, &[0x50, 0x4b, 0x01, 0x02], 24, 200)?;
     let dir = temp_file("contoso.liar.1.0.0.nupkg", &archive)?;
 
     let run = customs(
@@ -104,8 +105,11 @@ fn a_declared_uncompressed_size_is_never_trusted() -> TestResult {
         &["scan", "contoso.liar.1.0.0.nupkg", "--format", "json"],
     )?;
     let report = run.json()?;
-    assert!(bytes_read(&report)? <= SNIFF_BYTES, "{report}");
-    assert!(run.code == 0 || run.code == 3, "{}", run.stderr);
+    // Exactly the cap, and a clean read: a reader that went on to the
+    // declared 200 bytes would also hit the checksum at the end of the
+    // declared size, which does not match, and report a gap.
+    assert_eq!(bytes_read(&report)?, SNIFF_BYTES, "{report}");
+    assert_eq!(run.code, 0, "{report}");
     Ok(())
 }
 
@@ -268,6 +272,8 @@ fn two_entries_equal_ignoring_case_are_c003() -> TestResult {
 
 #[test]
 fn ansi_escapes_and_bidi_overrides_in_package_paths_print_escaped() -> TestResult {
+    // A name with a control character is C003 and not classified; its text
+    // still reaches the report, escaped.
     let name = "build/\u{1b}[31mred\u{202e}stegrat.targets";
     let archive = zip(&[(name, b"<Project />")])?;
     let dir = temp_file("contoso.paint.1.0.0.nupkg", &archive)?;
@@ -288,7 +294,54 @@ fn ansi_escapes_and_bidi_overrides_in_package_paths_print_escaped() -> TestResul
         &["scan", "contoso.paint.1.0.0.nupkg", "--format", "json"],
     )?;
     assert!(!json.stdout.contains('\u{1b}'));
-    assert_eq!(findings(&json.json()?, "C101")[0]["path"], name);
+    let report = json.json()?;
+    assert_eq!(findings(&report, "C003")[0]["path"], name);
+    assert!(findings(&report, "C101").is_empty(), "{report}");
+
+    // A bidirectional override alone is not a control character: the entry
+    // is classified, and printed escaped.
+    let quiet = "build/Contoso.Paint\u{202e}stegrat.targets";
+    let dir = temp_file(
+        "contoso.paint.1.0.0.nupkg",
+        &zip(&[(quiet, b"<Project />")])?,
+    )?;
+    let text = customs(dir.path(), &["scan", "contoso.paint.1.0.0.nupkg"])?;
+    assert!(
+        text.stdout
+            .contains(r"C101  build assets: build/Contoso.Paint\u{202e}stegrat.targets"),
+        "{}",
+        text.stdout
+    );
+    Ok(())
+}
+
+#[test]
+fn text_from_a_graph_file_reaches_stderr_escaped() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let names = [
+        "Contoso\u{1b}[2J",
+        "Contoso\u{1b}]0;title\u{7}",
+        "Contoso\u{7}",
+        "Contoso\u{202e}",
+    ];
+    for (i, name) in names.iter().enumerate() {
+        let lock = serde_json::json!({
+            "version": 1,
+            "dependencies": {"net8.0": {*name: {"type": "Odd", "resolved": "1.0.0"}}}
+        });
+        let file = format!("lock-{i}.json");
+        fs::write(dir.path().join(&file), lock.to_string())?;
+        let run = customs(dir.path(), &["scan", &file])?;
+        assert_eq!(run.code, 2, "{name:?}");
+        for raw in ['\u{1b}', '\u{7}', '\u{202e}'] {
+            assert!(!run.stderr.contains(raw), "{name:?}: {:?}", run.stderr);
+        }
+        assert!(
+            run.stderr.contains(r"Contoso\u{"),
+            "{name:?}: {}",
+            run.stderr
+        );
+    }
     Ok(())
 }
 
@@ -330,11 +383,7 @@ fn a_link_inside_an_extracted_package_folder_is_not_followed() -> TestResult {
     let package = root.path().join("packages/contoso.linked/1.0.0");
     fs::create_dir_all(&package)?;
     fs::write(package.join(".nupkg.metadata"), "{}")?;
-    if !link_dir(&outside, &package.join("build")) {
-        // Creating links needs a privilege on Windows that the test may
-        // not have. Linux and macOS CI always run this test.
-        return Ok(());
-    }
+    link_dir(&outside, &package.join("build"))?;
 
     let run = customs(
         root.path(),
@@ -352,14 +401,106 @@ fn a_link_inside_an_extracted_package_folder_is_not_followed() -> TestResult {
     Ok(())
 }
 
-#[cfg(unix)]
-fn link_dir(target: &std::path::Path, link: &std::path::Path) -> bool {
-    std::os::unix::fs::symlink(target, link).is_ok()
+#[test]
+fn a_package_folder_that_is_a_link_is_not_followed() -> TestResult {
+    for level in ["id", "version"] {
+        let root = tempfile::tempdir()?;
+        let outside = root.path().join("outside");
+        fs::create_dir_all(outside.join("1.0.0/build"))?;
+        fs::write(outside.join("1.0.0/.nupkg.metadata"), "{}")?;
+        fs::write(
+            outside.join("1.0.0/build/Contoso.Linked.targets"),
+            "<Project />",
+        )?;
+        fs::create_dir_all(root.path().join("packages"))?;
+        if level == "id" {
+            link_dir(&outside, &root.path().join("packages/contoso.linked"))?;
+        } else {
+            fs::create_dir_all(root.path().join("packages/contoso.linked"))?;
+            link_dir(
+                &outside.join("1.0.0"),
+                &root.path().join("packages/contoso.linked/1.0.0"),
+            )?;
+        }
+        fs::write(
+            root.path().join("packages.lock.json"),
+            r#"{"version": 1, "dependencies": {"net8.0": {"Contoso.Linked": {"type": "Direct", "resolved": "1.0.0"}}}}"#,
+        )?;
+
+        // Through a graph: C003 for the package, not read, not complete.
+        let run = customs(
+            root.path(),
+            &[
+                "scan",
+                "packages.lock.json",
+                "--packages-dir",
+                "packages",
+                "--format",
+                "json",
+            ],
+        )?;
+        let report = run.json()?;
+        assert!(
+            findings(&report, "C101").is_empty(),
+            "{level}: followed: {report}"
+        );
+        let links = findings(&report, "C003");
+        assert_eq!(links.len(), 1, "{level}: {report}");
+        assert!(
+            links[0]["message"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("link")
+        );
+        assert_eq!(
+            report["packages"][0]["complete"], false,
+            "{level}: {report}"
+        );
+        assert_eq!(run.code, 1, "{level}");
+
+        // Through the packages folder: reported, never dropped.
+        let run = customs(
+            root.path(),
+            &["scan", "--packages-dir", "packages", "--format", "json"],
+        )?;
+        let report = run.json()?;
+        assert!(
+            findings(&report, "C101").is_empty(),
+            "{level}: followed: {report}"
+        );
+        let reported = findings(&report, "C003").len() + gaps(&report, "C001").len();
+        assert!(reported >= 1, "{level}: dropped silently: {report}");
+        assert_ne!(run.code, 0, "{level}");
+    }
+    Ok(())
 }
 
-#[cfg(windows)]
-fn link_dir(target: &std::path::Path, link: &std::path::Path) -> bool {
-    std::os::windows::fs::symlink_dir(target, link).is_ok()
+/// Makes `link` a link to the directory `target`: a symbolic link, or on
+/// Windows a directory junction when symbolic links need a privilege the
+/// test does not have. Fails if it can make neither, so that the link
+/// tests never pass without checking anything.
+fn link_dir(target: &std::path::Path, link: &std::path::Path) -> TestResult {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(target, link)?;
+    }
+    #[cfg(windows)]
+    {
+        if std::os::windows::fs::symlink_dir(target, link).is_err() {
+            let status = std::process::Command::new("cmd")
+                .arg("/C")
+                .arg("mklink")
+                .arg("/J")
+                .arg(link)
+                .arg(target)
+                .output()?
+                .status;
+            if !status.success() {
+                return Err("could make neither a symbolic link nor a junction".into());
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Overwrites the little-endian `u32` at `offset` after the first

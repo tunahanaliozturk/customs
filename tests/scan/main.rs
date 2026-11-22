@@ -4,4 +4,5 @@
 mod common;
 mod exit;
 mod golden;
+mod layout;
 mod version;
