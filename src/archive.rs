@@ -58,27 +58,11 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
         return None;
     }
     // The zip crate allocates for every entry the central directory
-    // declares, so the count is checked before the crate parses anything.
-    match declared_entries(&mut file, length) {
-        Ok(Some(count)) if count > limits.entries => {
-            outcome.gaps.push(gap(
-                GapRule::C002,
-                format!(
-                    "limit reached: the archive declares {} entries, over the limit of {} for one package; not read",
-                    thousands(count),
-                    thousands(limits.entries)
-                ),
-            ));
-            return None;
-        }
-        Ok(Some(_)) => {}
-        Ok(None) => {
-            outcome.gaps.push(gap(
-                GapRule::C001,
-                "not a zip archive: no end of central directory record".to_owned(),
-            ));
-            return None;
-        }
+    // declares, so the layout, the count and the directory size are checked
+    // before the crate sees the file.
+    let refusal = match canonical_layout(&mut file, length, limits) {
+        Ok(Ok(())) => None,
+        Ok(Err(refusal)) => Some(refusal),
         Err(e) => {
             outcome.gaps.push(gap(
                 GapRule::C001,
@@ -86,6 +70,10 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
             ));
             return None;
         }
+    };
+    if let Some(refusal) = refusal {
+        refuse(refusal, limits, outcome);
+        return None;
     }
     if let Err(e) = file.seek(SeekFrom::Start(0)) {
         outcome.gaps.push(gap(
@@ -114,42 +102,184 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
     Some(Archive { zip })
 }
 
-/// The largest entry count declared by any end of central directory record,
-/// classic or zip64, in the last 65,557 bytes of the file. `None` if there is
-/// no such record.
-// ponytail: an archive whose every record in the tail is invalid to the zip
-// crate could make it search further back than this; M6 compares the two.
-fn declared_entries(file: &mut File, length: u64) -> std::io::Result<Option<u64>> {
-    const EOCD: [u8; 4] = [0x50, 0x4b, 0x05, 0x06];
-    const LOCATOR: [u8; 4] = [0x50, 0x4b, 0x06, 0x07];
-    const EOCD64: [u8; 4] = [0x50, 0x4b, 0x06, 0x06];
-    let start = length.saturating_sub(22 + 65_535);
+/// Records why an archive was not opened.
+fn refuse(refusal: Refusal, limits: &Limits, outcome: &mut Outcome) {
+    let gap = |rule, message: String| Gap::new(rule, None, message);
+    match refusal {
+        Refusal::NotZip => outcome.gaps.push(gap(
+            GapRule::C001,
+            "not a zip archive: no end of central directory record".to_owned(),
+        )),
+        Refusal::Layout(reason) => {
+            outcome.findings.push(Finding::new(
+                FindingRule::C003,
+                None,
+                format!("an archive layout that zip readers read differently; not opened: {reason}"),
+            ));
+            outcome.gaps.push(gap(
+                GapRule::C001,
+                "not read, because of its archive layout (see C003)".to_owned(),
+            ));
+        }
+        Refusal::Entries(count) => outcome.gaps.push(gap(
+            GapRule::C002,
+            format!(
+                "limit reached: the archive declares {} entries, over the limit of {} for one package; not read",
+                thousands(count),
+                thousands(limits.entries)
+            ),
+        )),
+        Refusal::Directory(size) => outcome.gaps.push(gap(
+            GapRule::C002,
+            format!(
+                "limit reached: a central directory of {} bytes, over the limit of {}; not read",
+                thousands(size),
+                thousands(limits.directory_bytes)
+            ),
+        )),
+    }
+}
+
+/// Why customs does not hand an archive to the zip crate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Refusal {
+    /// No end of central directory record at all.
+    NotZip,
+    /// A layout that zip readers could read differently: C003.
+    Layout(&'static str),
+    /// More entries than the limit: a C002 gap.
+    Entries(u64),
+    /// A central directory larger than the limit: a C002 gap.
+    Directory(u64),
+}
+
+const END: [u8; 4] = [0x50, 0x4b, 0x05, 0x06];
+const LOCATOR: [u8; 4] = [0x50, 0x4b, 0x06, 0x07];
+const END64: [u8; 4] = [0x50, 0x4b, 0x06, 0x06];
+const DIRECTORY_HEADER: [u8; 4] = [0x50, 0x4b, 0x01, 0x02];
+
+/// The tail searched for the end record. The zip crate searches the last
+/// 22 + 4 + 65,536 bytes; a larger window only makes customs stricter.
+const TAIL: u64 = 22 + 65_535 + 1024;
+
+fn le(bytes: &[u8], at: usize, width: usize) -> Option<u64> {
+    let field = bytes.get(at..at.checked_add(width)?)?;
+    Some(
+        field
+            .iter()
+            .rev()
+            .fold(0, |value, byte| (value << 8) | u64::from(*byte)),
+    )
+}
+
+fn read_at(file: &mut File, offset: u64, length: usize) -> std::io::Result<Vec<u8>> {
+    file.seek(SeekFrom::Start(offset))?;
+    let mut bytes = vec![0; length];
+    file.read_exact(&mut bytes)?;
+    Ok(bytes)
+}
+
+/// Accepts only the canonical layout, where every reader finds the same
+/// central directory: the end record is the last one in the tail and its
+/// comment runs to the end of the file; the central directory ends where
+/// the end record (or the zip64 record) begins; a zip64 record is exactly
+/// where its locator points and ends where the locator begins; one disk.
+/// Then the entry count and the directory size must be within the limits.
+/// Anything else is refused, so the zip crate never parses a directory that
+/// customs did not check.
+fn canonical_layout(
+    file: &mut File,
+    length: u64,
+    limits: &Limits,
+) -> std::io::Result<Result<(), Refusal>> {
+    use Refusal::Layout;
+    let start = length.saturating_sub(TAIL);
     file.seek(SeekFrom::Start(start))?;
     let mut tail = Vec::new();
     file.take(length - start).read_to_end(&mut tail)?;
 
-    let mut most = None;
-    for at in (0..tail.len().saturating_sub(21)).filter(|&i| tail[i..].starts_with(&EOCD)) {
-        let mut count = u64::from(u16::from_le_bytes([tail[at + 10], tail[at + 11]]));
-        let locator = at.checked_sub(20).and_then(|l| tail.get(l..at));
-        if let Some(locator) = locator.filter(|l| l.starts_with(&LOCATOR)) {
-            let mut offset = [0; 8];
-            offset.copy_from_slice(&locator[8..16]);
-            let offset = u64::from_le_bytes(offset);
-            if offset.checked_add(56).is_some_and(|end| end <= length) {
-                let mut record = [0; 56];
-                file.seek(SeekFrom::Start(offset))?;
-                file.read_exact(&mut record)?;
-                if record.starts_with(&EOCD64) {
-                    let mut total = [0; 8];
-                    total.copy_from_slice(&record[32..40]);
-                    count = count.max(u64::from_le_bytes(total));
-                }
-            }
-        }
-        most = Some(most.map_or(count, |m: u64| m.max(count)));
+    let candidates: Vec<usize> = (0..tail.len().saturating_sub(3))
+        .filter(|&i| tail[i..].starts_with(&END))
+        .collect();
+    let Some((&at, earlier)) = candidates.split_last() else {
+        return Ok(Err(Refusal::NotZip));
+    };
+    // Where a candidate's comment would end, if it is a whole record.
+    let comment_end =
+        |at: usize| le(&tail, at + 20, 2).map(|comment| start + at as u64 + 22 + comment);
+    if comment_end(at) != Some(length) {
+        return Ok(Err(Layout(
+            "the last end record's comment does not run to the end of the file",
+        )));
     }
-    Ok(most)
+    if earlier
+        .iter()
+        .any(|&other| comment_end(other) == Some(length))
+    {
+        return Ok(Err(Layout("two end records both end the file")));
+    }
+    let field = |offset: usize, width: usize| le(&tail, at + offset, width).unwrap_or(0);
+    let record_at = start + at as u64;
+    let (disk, directory_disk, on_disk, entries) =
+        (field(4, 2), field(6, 2), field(8, 2), field(10, 2));
+    let (size, offset) = (field(12, 4), field(16, 4));
+    if disk != 0 || directory_disk != 0 || on_disk != entries {
+        return Ok(Err(Layout("a multi-disk archive")));
+    }
+    let maybe_zip64 = entries == 0xFFFF || size == 0xFFFF_FFFF || offset == 0xFFFF_FFFF;
+    let locator_at = record_at.checked_sub(20);
+    let locator = match locator_at {
+        Some(locator_at) if maybe_zip64 => {
+            Some(read_at(file, locator_at, 20)?).filter(|l| l.starts_with(&LOCATOR))
+        }
+        _ => None,
+    };
+
+    let (entries, size, offset, directory_end) = match (locator, locator_at) {
+        (Some(locator), Some(locator_at)) => {
+            let record64 = le(&locator, 8, 8).unwrap_or(u64::MAX);
+            if le(&locator, 4, 4) != Some(0) || le(&locator, 16, 4).is_none_or(|disks| disks > 1) {
+                return Ok(Err(Layout("a multi-disk archive")));
+            }
+            if record64.checked_add(56).is_none_or(|end| end > locator_at) {
+                return Ok(Err(Layout("the zip64 locator points past itself")));
+            }
+            let record = read_at(file, record64, 56)?;
+            if !record.starts_with(&END64) {
+                return Ok(Err(Layout("the zip64 locator points at no zip64 record")));
+            }
+            let ends_at = le(&record, 4, 8).and_then(|size| size.checked_add(record64 + 12));
+            if ends_at != Some(locator_at) {
+                return Ok(Err(Layout(
+                    "the zip64 record does not end where its locator begins",
+                )));
+            }
+            let field = |offset: usize| le(&record, offset, 8).unwrap_or(0);
+            let (disk, directory_disk) = (le(&record, 16, 4), le(&record, 20, 4));
+            if disk != Some(0) || directory_disk != Some(0) || field(24) != field(32) {
+                return Ok(Err(Layout("a multi-disk archive")));
+            }
+            (field(32), field(40), field(48), record64)
+        }
+        _ => (entries, size, offset, record_at),
+    };
+    if offset.checked_add(size) != Some(directory_end) {
+        return Ok(Err(Layout(
+            "the central directory does not end where its end record begins",
+        )));
+    }
+    if entries > limits.entries {
+        return Ok(Err(Refusal::Entries(entries)));
+    }
+    if size > limits.directory_bytes {
+        return Ok(Err(Refusal::Directory(size)));
+    }
+    if entries > 0 && !read_at(file, offset, 4)?.starts_with(&DIRECTORY_HEADER) {
+        return Ok(Err(Layout(
+            "no central directory header where the directory begins",
+        )));
+    }
+    Ok(Ok(()))
 }
 
 /// Decodes `%XX` escapes, as `NuGet` does when it extracts a package. `None`
@@ -178,6 +308,21 @@ fn unescape(name: &str) -> Option<String> {
     String::from_utf8(out).ok()
 }
 
+/// The name of an entry as `NuGet` extracts it: the raw bytes as UTF-8,
+/// whatever the language flag says, then `%XX` escapes decoded, then `\`
+/// read as `/`. A name whose bytes are not UTF-8, which readers decode in
+/// different code pages, or that holds a control character is refused.
+fn entry_name(raw: &[u8]) -> Result<String, &'static str> {
+    let text = std::str::from_utf8(raw).map_err(|_| "that zip readers decode differently")?;
+    let name = unescape(text)
+        .ok_or("that is not UTF-8 after unescaping")?
+        .replace('\\', "/");
+    if name.chars().any(char::is_control) {
+        return Err("with a control character");
+    }
+    Ok(name)
+}
+
 impl Files for Archive {
     fn entries(&mut self, limits: &Limits, outcome: &mut Outcome) -> Vec<Entry> {
         let mut entries = Vec::new();
@@ -193,42 +338,38 @@ impl Files for Archive {
                     continue;
                 }
             };
-            if data.is_dir() {
-                continue;
-            }
             if let Err(gap) = outcome.budget.take_entry(limits) {
                 outcome.gaps.push(gap);
                 break;
             }
-            let raw = String::from_utf8_lossy(data.name_raw()).into_owned();
-            let name = data
-                .name()
-                .map(|n| n.replace('\\', "/"))
-                .ok()
-                .and_then(|n| unescape(&n));
-            let Some(name) = name else {
-                outcome.findings.push(Finding::new(
-                    FindingRule::C003,
-                    Some(raw),
-                    "an entry name that is not valid UTF-8 after unescaping".to_owned(),
-                ));
+            if data.is_dir() {
                 continue;
-            };
-            match PackagePath::new(&name, limits) {
-                Ok(path) => entries.push(Entry {
-                    path,
-                    size: data.size(),
-                    key,
-                }),
-                Err(PathProblem::Unsafe(reason)) => outcome.findings.push(Finding::new(
-                    FindingRule::C003,
-                    Some(name.clone()),
-                    format!("an entry name that {reason}: {name}"),
-                )),
-                Err(PathProblem::Limit(message)) => {
-                    outcome
-                        .gaps
-                        .push(Gap::new(GapRule::C002, Some(shorten(&name)), message));
+            }
+            match entry_name(data.name_raw()) {
+                Ok(name) => match PackagePath::new(&name, limits) {
+                    Ok(path) => entries.push(Entry {
+                        path,
+                        size: data.size(),
+                        key,
+                    }),
+                    Err(PathProblem::Unsafe(reason)) => outcome.findings.push(Finding::new(
+                        FindingRule::C003,
+                        Some(name.clone()),
+                        format!("an entry name that {reason}: {name}"),
+                    )),
+                    Err(PathProblem::Limit(message)) => {
+                        outcome
+                            .gaps
+                            .push(Gap::new(GapRule::C002, Some(shorten(&name)), message));
+                    }
+                },
+                Err(reason) => {
+                    let shown = String::from_utf8_lossy(data.name_raw()).into_owned();
+                    outcome.findings.push(Finding::new(
+                        FindingRule::C003,
+                        Some(shown.clone()),
+                        format!("an entry name {reason}: {shown}"),
+                    ));
                 }
             }
         }
@@ -273,19 +414,23 @@ impl Files for Archive {
         if declared > by_ratio {
             return Err(ratio_gap(declared));
         }
-        budget.check_bytes(cap, limits, &entry.path)?;
-        // The declared size is not trusted: the read stops at the cap and at
-        // the ratio, counted on the bytes that actually come out.
-        let ratio_binds = by_ratio < cap;
-        let allowed = if ratio_binds { by_ratio + 1 } else { cap };
+        // The declared size is not trusted: the read is allowed the cap or
+        // the ratio, whichever is smaller, and one byte more to see whether
+        // the entry goes on. More than the ratio allows is a gap. The
+        // compressed size is the header's; one that is overstated is still
+        // bounded by the bytes really in the file.
+        let allowed = cap.min(by_ratio);
+        budget.check_bytes(allowed, limits, &entry.path)?;
         let file = self.zip.by_index(entry.key).map_err(|e| unreadable(&e))?;
         let mut bytes = Vec::new();
-        file.take(allowed)
+        file.take(allowed.saturating_add(1))
             .read_to_end(&mut bytes)
             .map_err(|e| unreadable(&e))?;
+        let produced = bytes.len() as u64;
+        bytes.truncate(usize::try_from(allowed).unwrap_or(usize::MAX));
         budget.bytes += bytes.len() as u64;
-        if ratio_binds && bytes.len() as u64 > by_ratio {
-            return Err(ratio_gap(bytes.len() as u64));
+        if produced > by_ratio {
+            return Err(ratio_gap(produced));
         }
         Ok(bytes)
     }
@@ -363,6 +508,43 @@ mod tests {
         );
         assert!(none.is_none());
         assert!(outcome.gaps[0].message.contains("declares 3 entries"));
+    }
+
+    #[test]
+    fn a_central_directory_one_byte_over_its_limit_is_a_gap_before_parsing() {
+        let file = archive(&[("a.txt", b"1"), ("b.txt", b"2")]);
+        let bytes = std::fs::read(file.path()).unwrap();
+        let end = &bytes[bytes.len() - 22..];
+        let size = u64::from(u32::from_le_bytes([end[12], end[13], end[14], end[15]]));
+        let (ok, outcome) = open_with(
+            &file,
+            &Limits {
+                directory_bytes: size,
+                ..Limits::default()
+            },
+        );
+        assert!(ok.is_some(), "{outcome:?}");
+        let (none, outcome) = open_with(
+            &file,
+            &Limits {
+                directory_bytes: size - 1,
+                ..Limits::default()
+            },
+        );
+        assert!(none.is_none());
+        assert_eq!(outcome.gaps[0].rule, GapRule::C002);
+        assert!(outcome.gaps[0].message.contains("central directory"));
+    }
+
+    #[test]
+    fn names_are_read_as_utf8_then_unescaped_then_given_slashes() {
+        assert_eq!(entry_name(b"build%5Cx.targets").unwrap(), "build/x.targets");
+        assert_eq!(entry_name(b"..%5Cx").unwrap(), "../x");
+        assert_eq!(entry_name("lib/Ü.dll".as_bytes()).unwrap(), "lib/Ü.dll");
+        assert!(entry_name(b"lib/\x81.dll").is_err());
+        assert!(entry_name(b"lib/a\0.dll").is_err());
+        assert!(entry_name(b"lib/a%00.dll").is_err());
+        assert!(entry_name(b"lib/a%C2%9B.dll").is_err(), "a C1 control");
     }
 
     #[test]

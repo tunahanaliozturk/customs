@@ -20,6 +20,8 @@ pub(crate) struct Limits {
     pub(crate) path_segments: usize,
     /// Bytes read from one entry to tell PE, ELF and Mach-O apart.
     pub(crate) sniff_bytes: u64,
+    /// Bytes of the central directory of one archive.
+    pub(crate) directory_bytes: u64,
     /// Decompressed bytes per compressed byte while reading an entry.
     pub(crate) ratio: u64,
     /// Bytes read from all entries of one package together.
@@ -36,6 +38,7 @@ impl Default for Limits {
             path_bytes: 1024,
             path_segments: 64,
             sniff_bytes: 64,
+            directory_bytes: 64 * MIB,
             ratio: 200,
             package_bytes: 512 * MIB,
         }
