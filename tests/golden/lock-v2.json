@@ -22,7 +22,7 @@
       "source": "packages/contoso.shouting/1.0.0",
       "complete": true,
       "read": {
-        "entries": 3,
+        "entries": 4,
         "bytes": 0
       },
       "assets": [
@@ -44,7 +44,7 @@
       "source": "packages/contoso.sources/1.1.0",
       "complete": true,
       "read": {
-        "entries": 4,
+        "entries": 9,
         "bytes": 0
       },
       "assets": [
@@ -65,7 +65,7 @@
       "source": "packages/fabrikam.legacy/1.0.0",
       "complete": true,
       "read": {
-        "entries": 5,
+        "entries": 8,
         "bytes": 0
       },
       "assets": [

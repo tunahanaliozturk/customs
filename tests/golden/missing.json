@@ -37,7 +37,7 @@
       "source": "packages/fabrikam.plain/4.0.0-beta.2",
       "complete": true,
       "read": {
-        "entries": 3,
+        "entries": 5,
         "bytes": 0
       },
       "assets": [

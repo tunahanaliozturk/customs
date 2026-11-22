@@ -22,7 +22,7 @@
       "source": "assets-v4/obj/../../packages/contoso.analyzers/1.0.4",
       "complete": true,
       "read": {
-        "entries": 4,
+        "entries": 7,
         "bytes": 0
       },
       "assets": [
@@ -46,7 +46,7 @@
       "source": "assets-v4/obj/../../packages/fabrikam.legacy/1.0.0",
       "complete": true,
       "read": {
-        "entries": 5,
+        "entries": 8,
         "bytes": 0
       },
       "assets": [
@@ -75,7 +75,7 @@
       "source": "assets-v4/obj/../../packages/fabrikam.native/2.1.0",
       "complete": true,
       "read": {
-        "entries": 8,
+        "entries": 19,
         "bytes": 146
       },
       "assets": [

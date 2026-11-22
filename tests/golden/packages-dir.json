@@ -20,7 +20,7 @@
       "source": "packages/contoso.analyzers/1.0.4",
       "complete": true,
       "read": {
-        "entries": 4,
+        "entries": 7,
         "bytes": 0
       },
       "assets": [
@@ -42,7 +42,7 @@
       "source": "packages/contoso.build.tools/3.2.0",
       "complete": true,
       "read": {
-        "entries": 7,
+        "entries": 13,
         "bytes": 0
       },
       "assets": [
@@ -79,7 +79,7 @@
       "source": "packages/contoso.shouting/1.0.0",
       "complete": true,
       "read": {
-        "entries": 3,
+        "entries": 4,
         "bytes": 0
       },
       "assets": [
@@ -99,7 +99,7 @@
       "source": "packages/contoso.sources/1.1.0",
       "complete": true,
       "read": {
-        "entries": 4,
+        "entries": 9,
         "bytes": 0
       },
       "assets": [
@@ -117,7 +117,7 @@
       "source": "packages/fabrikam.legacy/1.0.0",
       "complete": true,
       "read": {
-        "entries": 5,
+        "entries": 8,
         "bytes": 0
       },
       "assets": [
@@ -144,7 +144,7 @@
       "source": "packages/fabrikam.native/2.1.0",
       "complete": true,
       "read": {
-        "entries": 8,
+        "entries": 19,
         "bytes": 146
       },
       "assets": [
@@ -183,7 +183,7 @@
       "source": "packages/fabrikam.plain/4.0.0-beta.2",
       "complete": true,
       "read": {
-        "entries": 3,
+        "entries": 5,
         "bytes": 0
       },
       "assets": [
