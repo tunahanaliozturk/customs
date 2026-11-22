@@ -49,8 +49,10 @@ def get(url):
 
 
 def nupkg_url(package_id, version):
-    # The flat container names versions without build metadata.
-    lower_id, lower_version = package_id.lower(), version.split("+")[0].lower()
+    # The flat container names versions without build metadata. The ID and
+    # version come from the search API, so they are percent-encoded.
+    lower_id = urllib.parse.quote(package_id.lower(), safe="")
+    lower_version = urllib.parse.quote(version.split("+")[0].lower(), safe="")
     return f"{FLAT_CONTAINER}{lower_id}/{lower_version}/{lower_id}.{lower_version}.nupkg"
 
 
@@ -123,18 +125,27 @@ def command_fetch(args):
 
     with concurrent.futures.ThreadPoolExecutor(8) as pool:
         sizes = list(pool.map(fetch, read_list()))
-    total = sum(p.stat().st_size for p in directory.glob("*.nupkg"))
+    listed = [directory / file_name(package_id, version) for package_id, version, _ in read_list()]
+    total = sum(path.stat().st_size for path in listed)
     print(
         f"{len(sizes)} packages in {directory}, {sum(1 for s in sizes if s)} downloaded, "
         f"{total:,} bytes in all"
     )
 
 
+def count(text):
+    """A package count the search API accepts in one query."""
+    value = int(text)
+    if not 1 <= value <= 1000:
+        raise argparse.ArgumentTypeError("the count must be from 1 to 1000")
+    return value
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
     make = commands.add_parser("list", help="query nuget.org and pin the list")
-    make.add_argument("--count", type=int, default=300)
+    make.add_argument("--count", type=count, default=300)
     make.add_argument("--dir", default=str(ROOT / "target" / "corpus"))
     fetch = commands.add_parser("fetch", help="download and check the pinned packages")
     fetch.add_argument("--dir", default=str(ROOT / "target" / "corpus"))

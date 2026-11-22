@@ -6,6 +6,8 @@
 # Notes are counted per rule: `notes RULE COUNT`.
 # Warnings and errors are listed one per line, with what the construct does:
 # ID VERSION RULE PATH:LINE EVIDENCE | reason
+# Sorted by ID, version, rule, path and line, line numbers compared as numbers.
+# The test compares sets, so the order is for people.
 #
 # Reviewed on 2026-11-22 by reading each flagged line in the package.
 

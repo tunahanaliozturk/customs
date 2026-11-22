@@ -23,9 +23,17 @@ jobs:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/cache@v4
+      # Restored and saved separately, so that a failing scan does not make
+      # next week's run download 849 MB again.
+      - id: corpus-cache
+        uses: actions/cache/restore@v4
         with:
           path: target/corpus
           key: corpus-${{ hashFiles('corpus/benign.txt') }}
       - run: python3 -I corpus/corpus.py fetch
+      - if: always() && steps.corpus-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: target/corpus
+          key: corpus-${{ hashFiles('corpus/benign.txt') }}
       - run: cargo test --release --test corpus -- --ignored
