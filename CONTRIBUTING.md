@@ -4,7 +4,7 @@ Bug reports, failing test cases and fixes are welcome. A pull request that adds 
 
 ## Set up
 
-You need a stable Rust toolchain (1.85 or newer) and git. You do not need the .NET SDK to build or test customs.
+You need a stable Rust toolchain (1.89 or newer) and git. You do not need the .NET SDK to build or test customs.
 
 ```
 git clone https://github.com/tunahanaliozturk/customs

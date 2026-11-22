@@ -1,3 +1,7 @@
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
+# serde_derive 1.0.229 builds on syn 3, and zip's zeroize_derive on syn 2.
+# Both are proc-macro build dependencies; nothing of either ends up in the
+# binary twice. Remove this when zeroize_derive moves to syn 3.
+allowed-duplicate-crates = ["syn"]

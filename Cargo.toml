@@ -2,7 +2,7 @@
 name = "customs"
 version = "0.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.89"
 description = "Shows what the NuGet packages in a .NET project run at build time and at load time, and what a version bump changed"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/tunahanaliozturk/customs"
@@ -44,3 +44,12 @@ redundant_closure_for_method_calls = "warn"
 semicolon_if_nothing_returned = "warn"
 todo = "warn"
 unwrap_used = "warn"
+
+[dependencies]
+lexopt = "0.3.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+zip = { version = "9.8.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
