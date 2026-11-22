@@ -131,18 +131,18 @@ impl PackageVersion {
         if numbers.get(3) == Some(&0) {
             numbers.truncate(3);
         }
-        let mut normalized = numbers
+        let mut normalised = numbers
             .iter()
             .map(u32::to_string)
             .collect::<Vec<_>>()
             .join(".");
         if let Some(label) = label {
-            normalized.push('-');
-            normalized.push_str(label);
+            normalised.push('-');
+            normalised.push_str(label);
         }
         Ok(Self {
             text: text.to_owned(),
-            lower: normalized.to_lowercase(),
+            lower: normalised.to_lowercase(),
         })
     }
 
@@ -456,9 +456,9 @@ mod tests {
             ("1.2.3-Beta.2+build.5", "1.2.3-beta.2"),
             ("1.0.0+abc", "1.0.0"),
         ];
-        for (text, normalized) in cases {
+        for (text, normalised) in cases {
             let version = PackageVersion::new(text).unwrap();
-            assert_eq!(version.lower(), normalized, "{text}");
+            assert_eq!(version.lower(), normalised, "{text}");
             assert_eq!(version.as_str(), text);
         }
         assert_eq!(
