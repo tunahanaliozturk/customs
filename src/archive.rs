@@ -226,10 +226,11 @@ fn canonical_layout(
     if disk != 0 || directory_disk != 0 || on_disk != entries {
         return Ok(Err(Layout("a multi-disk archive")));
     }
-    let maybe_zip64 = entries == 0xFFFF || size == 0xFFFF_FFFF || offset == 0xFFFF_FFFF;
+    // A locator counts wherever it is, also beside a record with no 0xFFFF
+    // field: the zip crate looks for one in front of every end record.
     let locator_at = record_at.checked_sub(20);
     let locator = match locator_at {
-        Some(locator_at) if maybe_zip64 => {
+        Some(locator_at) => {
             Some(read_at(file, locator_at, 20)?).filter(|l| l.starts_with(&LOCATOR))
         }
         _ => None,

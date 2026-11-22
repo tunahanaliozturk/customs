@@ -98,6 +98,31 @@ fn junk_in_front_and_a_zip64_record_away_from_its_locator_is_refused_unopened() 
 }
 
 #[test]
+fn a_zip64_locator_beside_an_end_record_that_asks_for_none_is_not_passed_by() -> TestResult {
+    // The classic record is consistent by itself: one entry, no 0xFFFF field,
+    // and a directory that runs exactly to it. The zip crate looks for a
+    // locator in front of every end record all the same, and takes the count
+    // from the zip64 record: 60,000 entries.
+    let (body, size, offset) = split_end(&many(60_000)?)?;
+    let mut bytes = body;
+    let record64_at = bytes.len() as u64;
+    bytes.extend(zip64_record(60_000, size, offset));
+    bytes.extend(locator(record64_at));
+    let record_at = bytes.len() as u64;
+    bytes.extend(classic_end(
+        1,
+        u32::try_from(record_at - offset)?,
+        u32::try_from(offset)?,
+    ));
+
+    let (code, report) = scan("contoso.quiet.1.0.0.nupkg", &bytes)?;
+    assert_eq!(code, 3, "{report}");
+    assert_eq!(report["packages"][0]["read"]["entries"], 0, "{report}");
+    assert_eq!(gaps(&report, "C002").len(), 1, "{report}");
+    Ok(())
+}
+
+#[test]
 fn junk_in_front_of_a_plain_archive_is_refused_unopened() -> TestResult {
     // The record's own fields are honest, but the directory no longer ends
     // where the record begins; readers that detect the offset and readers
