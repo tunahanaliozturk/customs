@@ -5,9 +5,10 @@
 //! The bytes are hostile. Every offset, size, count and index that comes
 //! from the file is checked against the slice it points into, with checked
 //! arithmetic, before it is used: reads go through `get`, or through a range
-//! computed from the length of the slice it cuts. The row counts are checked against the size of the table stream before any
-//! row is read, so a count cannot size an allocation or a loop beyond the
-//! bytes that are really there. Names are compared in place, reading at most
+//! computed from the length of the slice it cuts. The row counts are
+//! checked against the size of the table stream before any row is read, so
+//! a count cannot size an allocation or a loop beyond the bytes that are
+//! really there. Names are compared in place, reading at most
 //! the length of the name looked for, so the work is linear in the rows read.
 //! Metadata that readers could read differently is refused (ADR 0006).
 
@@ -1920,6 +1921,10 @@ mod tests {
         let mut cut = fixture("ModuleInit.dll");
         cut.truncate(1024);
         for (bytes, evidence) in [
+            (
+                fixture("ModuleInit.dll")[..64].to_vec(),
+                "the PE headers cannot be read",
+            ),
             (cut, "a section's raw data lies outside the file"),
             (b"not a binary".to_vec(), "not a PE file"),
         ] {
