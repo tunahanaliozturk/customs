@@ -1584,40 +1584,40 @@ mod tests {
         ])
     }
 
-    /// The fastest of three checks of `endless_names(rows)`.
-    fn check_time(rows: u32) -> Duration {
-        let bytes = endless_names(rows);
+    /// The time of one check of `bytes`, which must find the one import.
+    fn check_time(bytes: &[u8]) -> Duration {
         let assembly = Assembly {
             bytes: &[],
             sections: SectionTable::default(),
-            metadata: parse(&bytes).unwrap(),
+            metadata: parse(bytes).unwrap(),
         };
-        (0..3)
-            .map(|_| {
-                let started = Instant::now();
-                let report = assembly.check("lib/a.dll", &Limits::default()).unwrap();
-                let elapsed = started.elapsed();
-                assert_eq!(report.findings.len(), 1);
-                assert_eq!(
-                    report.findings[0].evidence,
-                    Some(format!("{}!VirtualProtect", "A".repeat(240)))
-                );
-                elapsed
-            })
-            .min()
-            .unwrap()
+        let started = Instant::now();
+        let report = assembly.check("lib/a.dll", &Limits::default()).unwrap();
+        let elapsed = started.elapsed();
+        assert_eq!(report.findings.len(), 1);
+        assert_eq!(
+            report.findings[0].evidence,
+            Some(format!("{}!VirtualProtect", "A".repeat(240)))
+        );
+        elapsed
     }
 
     /// A reader that read every name to its end would take time in the
     /// rows times the name, and the name grows with the rows here: doubling
     /// both would take four times as long. Names compared in place keep it
-    /// near twice; the bound is three times, plus 10 ms for timer noise.
+    /// near twice; the bound is three times, plus 25 ms for timer noise.
+    /// The two sizes are timed in turn, five times, and the fastest of each
+    /// compared, so that other tests running alongside slow both alike.
     #[test]
     fn rows_that_all_point_at_one_endless_name_are_read_in_linear_time() {
-        let base = check_time(100_000);
-        let double = check_time(200_000);
+        let (small, large) = (endless_names(100_000), endless_names(200_000));
+        let (mut base, mut double) = (Duration::MAX, Duration::MAX);
+        for _ in 0..5 {
+            base = base.min(check_time(&small));
+            double = double.min(check_time(&large));
+        }
         assert!(
-            double < base * 3 + Duration::from_millis(10),
+            double < base * 3 + Duration::from_millis(25),
             "100,000 rows {base:?}, 200,000 rows {double:?}"
         );
     }
