@@ -58,8 +58,8 @@ What customs cannot see:
     graph files, and the content of contentFiles source code
   - a package cache changed after restore
 
-Planned, not built yet: MSBuild rules (M2), assembly rules (M3), package ID
-rules, baselines and SARIF (M4), customs diff and --verify-cache (M5).
+Planned, not built yet: package ID rules, baselines and SARIF (M4), customs
+diff and --verify-cache (M5).
 ";
 
 /// A usage error, or an input that could not be read as a graph: exit 2.

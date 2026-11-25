@@ -622,6 +622,17 @@ impl<'a> Metadata<'a> {
         })
     }
 
+    /// The string index of the name of the method an `ImplMap` row forwards,
+    /// or `None` when the row forwards a field or nothing.
+    fn forwarded_method_name(&self, member: u32) -> Result<Option<u32>, Unreadable> {
+        // MemberForwarded has one tag bit: 0 is Field, 1 is MethodDef.
+        let row = member >> 1;
+        if member & 1 == 0 || row == 0 {
+            return Ok(None);
+        }
+        self.cell(METHOD_DEF, row, 3).map(Some)
+    }
+
     /// The name of a `ModuleRef` row, for a message: one longer than
     /// [`NAME_LIMIT`] bytes is cut there, not refused. Row 0 is no module.
     fn module_name(&self, row: u32) -> Result<&'a [u8], Unreadable> {
@@ -837,7 +848,14 @@ impl<'a> Assembly<'a> {
         }
         let mut dropped: u64 = 0;
         for row in self.metadata.imports() {
-            let [_, _, name, module] = row?;
+            let [_, member, name, module] = row?;
+            // An import with no name of its own is matched by the name of
+            // the method it forwards, so leaving the name out hides nothing.
+            let name = if name == 0 || self.metadata.name_is(name, b"", false) {
+                self.metadata.forwarded_method_name(member)?.unwrap_or(name)
+            } else {
+                name
+            };
             let Some(function) = PINVOKE_SHORT_LIST
                 .iter()
                 .find(|f| self.metadata.name_is(name, f.as_bytes(), true))
@@ -1702,7 +1720,7 @@ mod tests {
     /// assemblies that Microsoft ships (`DirectWriteForwarder.dll` and
     /// `System.Printing.dll` in the `WindowsDesktop` runtime pack 11.0.0) have
     /// empty ones. Refusing them made those assemblies C304, so an empty
-    /// import name is read, and matches nothing on the short list.
+    /// import name is read. With no method behind it, it matches nothing.
     #[test]
     fn an_import_without_a_name_is_read_and_matches_nothing() {
         assert_eq!(check_import(1).unwrap().findings.len(), 1);
@@ -1712,6 +1730,35 @@ mod tests {
                 Ok(Vec::new()),
                 "name index {name}"
             );
+        }
+    }
+
+    /// An import with no name is matched by the name of its method, so a
+    /// method called `VirtualProtect` is C302 whether or not the import
+    /// repeats the name.
+    #[test]
+    fn an_import_without_a_name_is_matched_by_the_name_of_its_method() {
+        for name in [0u8, 16] {
+            // MethodDef: RVA, two flag words, name at 1, signature, params.
+            // ImplMap: flags, member (MethodDef row 1), name, module.
+            let tables = [
+                0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 3, 0, name, 0, 0, 0,
+            ];
+            let bytes = metadata_root(&[
+                (
+                    "#~",
+                    table_stream(0, &[(METHOD_DEF, 1), (IMPL_MAP, 1)], &[], &tables),
+                ),
+                ("#Strings", b"\0VirtualProtect\0\0".to_vec()),
+            ]);
+            let assembly = Assembly {
+                bytes: &[],
+                sections: SectionTable::default(),
+                metadata: parse(&bytes).unwrap(),
+            };
+            let report = assembly.check("lib/a.dll", &Limits::default()).unwrap();
+            assert_eq!(report.findings.len(), 1, "name index {name}");
+            assert_eq!(report.findings[0].rule, FindingRule::C302);
         }
     }
 
