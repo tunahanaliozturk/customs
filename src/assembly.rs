@@ -557,13 +557,31 @@ impl<'a> Metadata<'a> {
         } else {
             methods.saturating_add(1)
         };
-        if first == 0 || first >= end {
-            return Ok(None);
-        }
-        if end > methods.saturating_add(1) {
+        // System.Reflection.Metadata reads the refusals below as empty
+        // lists; none of them is a valid encoding (ADR 0006).
+        let past = methods.saturating_add(1);
+        if end > past {
             return Err(Malformed(
                 "the method list of <Module> runs past the MethodDef table",
             ));
+        }
+        if first > past {
+            return Err(Malformed(
+                "the method list of <Module> starts past the MethodDef table",
+            ));
+        }
+        if first > end {
+            return Err(Malformed(
+                "the method list of <Module> starts after the next type's",
+            ));
+        }
+        if first == 0 && end > 1 {
+            return Err(Malformed(
+                "the method list of <Module> is 0 while the next type's starts later",
+            ));
+        }
+        if first == 0 || first == end {
+            return Ok(None);
         }
         for row in first..end {
             let flags = self.cell(METHOD_DEF, row, 2)?;
@@ -1385,6 +1403,60 @@ mod tests {
             assert!(matches!(parse(bytes), Err(Malformed(_))), "case {i}");
         }
         assert!(parse(&metadata_root(&[("#~", tables()), ("#Other", vec![1])])).is_ok());
+    }
+
+    /// The module initialiser of metadata where `<Module>`'s method list
+    /// starts at `first`, the next type's (if any) at `next`, and `MethodDef`
+    /// has `methods` ordinary rows.
+    fn module_methods(
+        first: u16,
+        next: Option<u16>,
+        methods: u32,
+    ) -> Result<Option<u32>, Unreadable> {
+        let mut tables = Vec::new();
+        for method_list in std::iter::once(first).chain(next) {
+            tables.extend([0; 12]);
+            tables.extend(method_list.to_le_bytes());
+        }
+        for _ in 0..methods {
+            tables.extend([0; 14]);
+        }
+        let types = if next.is_some() { 2 } else { 1 };
+        let bytes = metadata_root(&[(
+            "#~",
+            table_stream(0, &[(TYPE_DEF, types), (METHOD_DEF, methods)], &[], &tables),
+        )]);
+        parse(&bytes).unwrap().module_initializer()
+    }
+
+    /// `System.Reflection.Metadata` reads each of these as an empty method
+    /// list; they are not a valid encoding, so customs refuses them.
+    #[test]
+    fn a_method_list_of_module_that_is_not_a_range_is_refused() {
+        assert_eq!(
+            module_methods(0, Some(2), 1),
+            Err(Malformed(
+                "the method list of <Module> is 0 while the next type's starts later"
+            ))
+        );
+        assert_eq!(
+            module_methods(2, Some(1), 2),
+            Err(Malformed(
+                "the method list of <Module> starts after the next type's"
+            ))
+        );
+        assert_eq!(
+            module_methods(3, None, 1),
+            Err(Malformed(
+                "the method list of <Module> starts past the MethodDef table"
+            ))
+        );
+        // Empty lists that are valid: none of them is refused.
+        assert_eq!(module_methods(0, None, 0), Ok(None));
+        assert_eq!(module_methods(0, Some(1), 0), Ok(None));
+        assert_eq!(module_methods(1, Some(1), 1), Ok(None));
+        assert_eq!(module_methods(2, None, 1), Ok(None));
+        assert_eq!(module_methods(1, Some(2), 1), Ok(None));
     }
 
     #[test]
