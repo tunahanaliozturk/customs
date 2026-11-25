@@ -47,6 +47,7 @@ unwrap_used = "warn"
 
 [dependencies]
 lexopt = "0.3.2"
+object = { version = "0.41.0", default-features = false, features = ["read_core", "pe", "unaligned"] }
 roxmltree = "0.21.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
