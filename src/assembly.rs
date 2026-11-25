@@ -1429,6 +1429,8 @@ mod tests {
             metadata_root(&[("#~", table_stream(0, &[(METHOD_PTR, 0)], &[], &[]))]),
             metadata_root(&[("#~", table_stream(0, &[(ENC_LOG, 0)], &[], &[]))]),
             metadata_root(&[("#~", table_stream(0, &[(0x30, 0)], &[], &[]))]),
+            metadata_root(&[("#~", tables()), ("#JTD", Vec::new())]),
+            metadata_root(&[("#~", tables()), ("#Pdb", vec![0; 4])]),
         ];
         for (i, bytes) in refused.iter().enumerate() {
             assert!(matches!(parse(bytes), Err(Malformed(_))), "case {i}");
@@ -1905,6 +1907,91 @@ mod tests {
         assert_eq!(outcome.gaps.len(), 1);
         assert!(outcome.gaps[0].message.contains("an assembly over"));
         assert_eq!(outcome.budget.bytes, bytes.len() as u64);
+    }
+
+    /// Under `tools/` only native code becomes C104: a managed assembly that
+    /// cannot be read, and a file that is no binary at all, are C304, raised
+    /// to an error as build-time code.
+    #[test]
+    fn an_unreadable_file_under_tools_is_c304_as_an_error() {
+        let tool = Asset::Managed {
+            role: ManagedRole::BuildTime,
+        };
+        let mut cut = fixture("ModuleInit.dll");
+        cut.truncate(1024);
+        for (bytes, evidence) in [
+            (cut, "a section's raw data lies outside the file"),
+            (b"not a binary".to_vec(), "not a PE file"),
+        ] {
+            let (asset, outcome) = scan_one(bytes, "tools/gen.dll", tool, &Limits::default());
+            assert_eq!(asset, tool);
+            assert_eq!(outcome.findings.len(), 1, "{evidence}");
+            let found = &outcome.findings[0];
+            assert_eq!(found.rule, FindingRule::C304);
+            assert_eq!(found.severity, crate::scan::Severity::Error);
+            assert_eq!(found.evidence.as_deref(), Some(evidence));
+        }
+    }
+
+    /// A row count over the limit, in a stream that holds the rows, ends as
+    /// a C002 gap on the assembly and no finding.
+    #[test]
+    fn a_row_count_over_the_limit_is_a_gap_through_the_scan() {
+        let limits = Limits {
+            table_rows: 5,
+            ..Limits::default()
+        };
+        let lib = Asset::Managed {
+            role: ManagedRole::Lib,
+        };
+        let (_, outcome) = scan_one(fixture("ModuleInit.dll"), "lib/a.dll", lib, &limits);
+        assert_eq!(outcome.findings, Vec::new());
+        assert_eq!(outcome.gaps.len(), 1);
+        assert_eq!(outcome.gaps[0].rule, GapRule::C002);
+        assert_eq!(outcome.gaps[0].path.as_deref(), Some("lib/a.dll"));
+        assert!(
+            outcome.gaps[0]
+                .message
+                .contains("rows in metadata table 0x01"),
+            "{}",
+            outcome.gaps[0].message
+        );
+    }
+
+    /// Markers are read from `TypeRef` as from `TypeDef`, and only with the
+    /// marker's namespace.
+    #[test]
+    fn a_marker_counts_in_type_ref_and_only_in_its_namespace() {
+        let check = |table: usize, namespace: u16| {
+            // TypeRef: scope, name, namespace. TypeDef: flags, name,
+            // namespace, extends, field list, method list.
+            let mut tables = Vec::new();
+            if table == TYPE_DEF {
+                tables.extend([0, 0, 0, 0]);
+            } else {
+                tables.extend([0, 0]);
+            }
+            tables.extend(1u16.to_le_bytes());
+            tables.extend(namespace.to_le_bytes());
+            if table == TYPE_DEF {
+                tables.extend([0, 0, 1, 0, 1, 0]);
+            }
+            let bytes = metadata_root(&[
+                ("#~", table_stream(0, &[(table, 1)], &[], &tables)),
+                ("#Strings", b"\0DotfuscatorAttribute\0X\0".to_vec()),
+            ]);
+            let assembly = Assembly {
+                bytes: &[],
+                sections: SectionTable::default(),
+                metadata: parse(&bytes).unwrap(),
+            };
+            let report = assembly.check("lib/a.dll", &Limits::default()).unwrap();
+            report.findings.iter().map(|f| f.rule).collect::<Vec<_>>()
+        };
+        assert_eq!(check(TYPE_REF, 0), [FindingRule::C303]);
+        assert_eq!(check(TYPE_DEF, 0), [FindingRule::C303]);
+        assert_eq!(check(TYPE_REF, 22), []);
+        assert_eq!(check(TYPE_DEF, 22), []);
     }
 
     #[test]
