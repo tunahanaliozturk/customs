@@ -9,6 +9,7 @@
 //! The library has one entry point, [`run`], which the binary calls.
 
 mod archive;
+mod assembly;
 mod cli;
 mod folder;
 mod graph;

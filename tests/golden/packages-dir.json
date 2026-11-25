@@ -21,7 +21,7 @@
       "complete": true,
       "read": {
         "entries": 7,
-        "bytes": 0
+        "bytes": 8192
       },
       "assets": [
         {
@@ -43,7 +43,7 @@
       "complete": true,
       "read": {
         "entries": 13,
-        "bytes": 319
+        "bytes": 4415
       },
       "assets": [
         {
@@ -118,7 +118,7 @@
       "complete": true,
       "read": {
         "entries": 8,
-        "bytes": 0
+        "bytes": 4096
       },
       "assets": [
         {
@@ -145,7 +145,7 @@
       "complete": true,
       "read": {
         "entries": 19,
-        "bytes": 146
+        "bytes": 4242
       },
       "assets": [
         {
@@ -184,7 +184,7 @@
       "complete": true,
       "read": {
         "entries": 5,
-        "bytes": 0
+        "bytes": 4096
       },
       "assets": [
         {

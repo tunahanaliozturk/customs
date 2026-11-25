@@ -9,7 +9,7 @@ use std::io::{Cursor, Write as _};
 use zip::CompressionMethod;
 use zip::write::{SimpleFileOptions, ZipWriter};
 
-use crate::common::{TestResult, customs, findings, gaps, temp_file, zip};
+use crate::common::{TestResult, assembly, customs, findings, gaps, temp_file, zip};
 
 const INLINE_TASK: &str = r#"<Project>
   <UsingTask TaskName="Fetch" TaskFactory="RoslynCodeTaskFactory"
@@ -661,11 +661,12 @@ const NUSPEC: &str = r#"<?xml version="1.0" encoding="utf-8"?>
 
 #[test]
 fn the_id_and_version_of_a_nupkg_come_from_its_nuspec_and_its_bytes_count() -> TestResult {
+    let dll = assembly("Plain.dll")?;
     let (code, report, _) = scan(
         "renamed.nupkg",
         &[
             ("Contoso.Real.Name.nuspec", NUSPEC.as_bytes()),
-            ("lib/net8.0/A.dll", b"MZ"),
+            ("lib/net8.0/A.dll", &dll),
         ],
     )?;
     assert_eq!(report["packages"][0]["id"], "Contoso.Real.Name");

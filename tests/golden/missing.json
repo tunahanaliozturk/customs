@@ -38,7 +38,7 @@
       "complete": true,
       "read": {
         "entries": 5,
-        "bytes": 0
+        "bytes": 4096
       },
       "assets": [
         {

@@ -6,7 +6,7 @@ use std::io::{Cursor, Write as _};
 
 use zip::write::{SimpleFileOptions, ZipWriter};
 
-use crate::common::{TestResult, customs, findings, gaps, temp_file, zip};
+use crate::common::{TestResult, assembly, customs, findings, gaps, temp_file, zip};
 
 /// An archive of `count` empty entries.
 fn many(count: usize) -> TestResult<Vec<u8>> {
@@ -197,18 +197,20 @@ fn an_end_record_signature_inside_the_comment_is_refused_unopened() -> TestResul
 
 #[test]
 fn canonical_archives_written_by_the_zip_crate_pass() -> TestResult {
+    // A real assembly, so that nothing but the layout could fail the scan.
+    let dll = assembly("Plain.dll")?;
     // Plain.
-    let plain = zip(&[("lib/net8.0/A.dll", b"MZ")])?;
+    let plain = zip(&[("lib/net8.0/A.dll", &dll)])?;
     // With a comment.
     let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
     writer.start_file("lib/net8.0/A.dll", SimpleFileOptions::default())?;
-    writer.write_all(b"MZ")?;
+    writer.write_all(&dll)?;
     writer.set_comment("a comment the writer added")?;
     let commented = writer.finish()?.into_inner();
     // With zip64 end records.
     let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
     writer.start_file("lib/net8.0/A.dll", SimpleFileOptions::default())?;
-    writer.write_all(b"MZ")?;
+    writer.write_all(&dll)?;
     writer.set_raw_zip64_extensible_data_sector(Box::new([]));
     let zip64 = writer.finish()?.into_inner();
     assert!(

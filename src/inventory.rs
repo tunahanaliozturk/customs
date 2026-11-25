@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Serialize;
 
+use crate::assembly;
 use crate::graph::lower_invariant;
 use crate::msbuild;
 use crate::package::{Entry, Files, Limits, PackagePath};
@@ -26,8 +27,9 @@ pub(crate) enum Asset {
     Native {
         format: NativeFormat,
     },
-    /// A `.dll` or `.exe` under `lib/`, `ref/` or `runtimes/*/lib/`. Until M3
-    /// reads the CLI header, a native PE file in those folders is listed here.
+    /// A `.dll` or `.exe` under `lib/`, `ref/`, `runtimes/*/lib/`, `build*/`
+    /// or `tools/`. Since M3 one under `build*/` or `tools/` that turns out to
+    /// be native code is listed as `Native` instead.
     Managed {
         role: ManagedRole,
     },
@@ -190,7 +192,7 @@ fn classify(path: &PackagePath, id: &str) -> Class {
 }
 
 /// Tells PE, ELF and Mach-O apart from the first bytes of a file.
-fn sniff(bytes: &[u8]) -> Option<NativeFormat> {
+pub(crate) fn sniff(bytes: &[u8]) -> Option<NativeFormat> {
     match bytes {
         [0x7f, b'E', b'L', b'F', ..] => Some(NativeFormat::Elf),
         [0xfe, 0xed, 0xfa, 0xce | 0xcf, ..] | [0xce | 0xcf, 0xfa, 0xed, 0xfe, ..] => {
@@ -271,6 +273,7 @@ pub(crate) fn inspect(
         }
     }
     assets.sort_by(|a, b| a.0.cmp(&b.0));
+    assembly::scan(files, &entries, &mut assets, limits, &mut outcome);
     outcome.findings.extend(findings(&assets));
     outcome.findings.sort();
     outcome.gaps.sort();

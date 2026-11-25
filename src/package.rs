@@ -4,7 +4,7 @@
 
 use crate::scan::{Gap, GapRule, Outcome};
 
-/// Every cap of the design that M1 code can reach, in one value passed down
+/// Every cap of the design that the code can reach, in one value passed down
 /// explicitly. Tests use small values to reach them cheaply.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Limits {
@@ -22,6 +22,10 @@ pub(crate) struct Limits {
     pub(crate) sniff_bytes: u64,
     /// Bytes read from one MSBuild file, or from the nuspec of a `.nupkg`.
     pub(crate) text_bytes: u64,
+    /// Bytes read from one assembly.
+    pub(crate) assembly_bytes: u64,
+    /// Rows in one metadata table. A token keeps 24 bits for the row.
+    pub(crate) table_rows: u32,
     /// Findings listed from one MSBuild file; past it, one C002 gap.
     pub(crate) findings_per_file: u64,
     /// XML nodes in one MSBuild document.
@@ -45,6 +49,8 @@ impl Default for Limits {
             path_segments: 64,
             sniff_bytes: 64,
             text_bytes: 8 * MIB,
+            assembly_bytes: 256 * MIB,
+            table_rows: 0x00FF_FFFF,
             findings_per_file: 1_000,
             xml_nodes: 200_000,
             directory_bytes: 64 * MIB,

@@ -34,6 +34,11 @@ pub(crate) fn fixtures() -> PathBuf {
         .join("fixtures")
 }
 
+/// A compiled assembly from `tests/fixtures/assemblies`, by file name.
+pub(crate) fn assembly(name: &str) -> TestResult<Vec<u8>> {
+    Ok(fs::read(fixtures().join("assemblies").join(name))?)
+}
+
 /// Runs the binary in `dir` with `NUGET_PACKAGES` set to a relative folder
 /// that does not exist, so that no real package folder on the machine is
 /// consulted and the reports name the same folder on every system.

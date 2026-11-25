@@ -114,15 +114,21 @@ pub(crate) fn text(scan: &Scan, fail_on: FailOn, out: &mut dyn Write) -> io::Res
             writeln!(
                 out,
                 "  {:<9}{}  {}",
-                finding.rule.severity().as_str(),
+                finding.severity.as_str(),
                 finding.rule.id(),
                 escape(&finding.message)
             )?;
-            if let (Some(path), Some(line)) = (&finding.path, finding.line) {
+            // MSBuild findings have a line, assembly findings evidence
+            // without a line. Inventory findings name the path in the
+            // message already.
+            if let Some(path) = &finding.path
+                && (finding.line.is_some() || finding.evidence.is_some())
+            {
+                let line = finding.line.map(|l| format!(":{l}")).unwrap_or_default();
                 let evidence = finding.evidence.as_deref().map(shorten).unwrap_or_default();
                 writeln!(
                     out,
-                    "{:17}{}:{line}  {}",
+                    "{:17}{}{line}  {}",
                     "",
                     escape(path),
                     escape(&evidence)
@@ -137,7 +143,7 @@ pub(crate) fn text(scan: &Scan, fail_on: FailOn, out: &mut dyn Write) -> io::Res
     }
     let count = |severity: Severity| {
         scan.findings()
-            .filter(|(_, f)| f.rule.severity() == severity)
+            .filter(|(_, f)| f.severity == severity)
             .count()
     };
     let mut summary = format!(
@@ -303,7 +309,7 @@ pub(crate) fn json(scan: &Scan, out: &mut dyn Write) -> io::Result<()> {
             .findings()
             .map(|(package, finding)| FindingOut {
                 rule: finding.rule.id(),
-                severity: finding.rule.severity(),
+                severity: finding.severity,
                 package: package.id.as_str(),
                 version: package.version.as_str(),
                 path: finding.path.as_deref(),

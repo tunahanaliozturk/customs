@@ -46,6 +46,10 @@ pub(crate) enum FindingRule {
     C205,
     C206,
     C207,
+    C301,
+    C302,
+    C303,
+    C304,
 }
 
 impl FindingRule {
@@ -65,22 +69,33 @@ impl FindingRule {
             Self::C205 => "C205",
             Self::C206 => "C206",
             Self::C207 => "C207",
+            Self::C301 => "C301",
+            Self::C302 => "C302",
+            Self::C303 => "C303",
+            Self::C304 => "C304",
         }
     }
 
     pub(crate) fn severity(self) -> Severity {
         match self {
             Self::C201 => Severity::Error,
-            Self::C003 | Self::C004 | Self::C203 | Self::C204 | Self::C205 | Self::C206 => {
-                Severity::Warning
-            }
+            Self::C003
+            | Self::C004
+            | Self::C203
+            | Self::C204
+            | Self::C205
+            | Self::C206
+            | Self::C301
+            | Self::C302
+            | Self::C304 => Severity::Warning,
             Self::C101
             | Self::C102
             | Self::C103
             | Self::C104
             | Self::C105
             | Self::C202
-            | Self::C207 => Severity::Note,
+            | Self::C207
+            | Self::C303 => Severity::Note,
         }
     }
 }
@@ -103,7 +118,7 @@ impl GapRule {
 
 /// One row of `customs rules`: ID, default severity (none for a gap), and
 /// one line.
-pub(crate) const RULES: [(&str, Option<Severity>, &str); 16] = [
+pub(crate) const RULES: [(&str, Option<Severity>, &str); 20] = [
     (
         "C001",
         None,
@@ -172,6 +187,26 @@ pub(crate) const RULES: [(&str, Option<Severity>, &str); 16] = [
         Some(Severity::Note),
         "An Import that cannot be resolved inside the package.",
     ),
+    (
+        "C301",
+        Some(Severity::Warning),
+        "Module initialiser: <Module> has a .cctor. An error in an analyzer or build-time assembly.",
+    ),
+    (
+        "C302",
+        Some(Severity::Warning),
+        "P/Invoke that changes memory protection or writes to another process. An error in an analyzer or build-time assembly.",
+    ),
+    (
+        "C303",
+        Some(Severity::Note),
+        "Marker of a known obfuscator. A warning in an analyzer or build-time assembly.",
+    ),
+    (
+        "C304",
+        Some(Severity::Warning),
+        "A .dll or .exe where NuGet expects managed code that is not a readable managed assembly. An error in an analyzer or build-time assembly.",
+    ),
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -183,6 +218,9 @@ pub(crate) struct Finding {
     pub(crate) message: String,
     /// What the rule saw, as defined with the rule; cut at 240 characters.
     pub(crate) evidence: Option<String>,
+    /// The rule's severity, or one step above it for an assembly that runs
+    /// at build time.
+    pub(crate) severity: Severity,
 }
 
 impl Finding {
@@ -193,7 +231,18 @@ impl Finding {
             line: None,
             message,
             evidence: None,
+            severity: rule.severity(),
         }
+    }
+
+    /// Raises the severity one step, for code that runs in the compiler or
+    /// in `MSBuild` on every build.
+    pub(crate) fn raised(mut self) -> Self {
+        self.severity = match self.severity {
+            Severity::Note => Severity::Warning,
+            Severity::Warning | Severity::Error => Severity::Error,
+        };
+        self
     }
 }
 
@@ -321,7 +370,7 @@ impl Scan {
     /// Findings at or above `--fail-on` come before gaps: precedence 1, then 3.
     pub(crate) fn verdict(&self, fail_on: FailOn) -> Verdict {
         let failing = match fail_on {
-            FailOn::At(threshold) => self.findings().any(|(_, f)| f.rule.severity() >= threshold),
+            FailOn::At(threshold) => self.findings().any(|(_, f)| f.severity >= threshold),
             FailOn::Never => false,
         };
         if failing {
@@ -396,6 +445,15 @@ mod tests {
     }
 
     #[test]
+    fn a_raised_finding_fails_at_its_raised_severity() {
+        let note = Finding::new(FindingRule::C303, None, String::new());
+        assert_eq!(note.raised().severity, Severity::Warning);
+        let warning = Finding::new(FindingRule::C301, None, String::new());
+        assert_eq!(warning.clone().raised().severity, Severity::Error);
+        assert_eq!(warning.raised().raised().severity, Severity::Error);
+    }
+
+    #[test]
     fn the_rule_table_matches_the_rule_types() {
         let finding_rules = [
             FindingRule::C003,
@@ -412,6 +470,10 @@ mod tests {
             FindingRule::C205,
             FindingRule::C206,
             FindingRule::C207,
+            FindingRule::C301,
+            FindingRule::C302,
+            FindingRule::C303,
+            FindingRule::C304,
         ];
         for rule in finding_rules {
             let row = RULES.iter().find(|r| r.0 == rule.id()).unwrap();
