@@ -1083,7 +1083,7 @@ mod tests {
                 .join("assemblies")
                 .join("oracle.jsonl"),
         );
-        assert_eq!(records.len(), 5);
+        assert_eq!(records.len(), 6);
         for record in records {
             let name = record["file"].as_str().unwrap();
             assert_eq!(describe(&fixture(name), false), expected(&record), "{name}");
@@ -1599,6 +1599,40 @@ mod tests {
         set_section(&mut empty, 2, 16, 0);
         set_section(&mut empty, 2, 20, u32::MAX);
         assert!(read_and_check(&empty).is_ok());
+    }
+
+    /// A module initialiser whose body cannot be read is still C301, with
+    /// that as its evidence: a body that starts with neither a tiny nor a
+    /// fat header, and one whose address is in no section.
+    #[test]
+    fn a_module_initialiser_without_a_readable_body_is_still_reported() {
+        let bytes = fixture("ModuleInit.dll");
+        let limits = Limits::default();
+        let assembly = Assembly::read(&bytes, &limits).unwrap();
+        let method = assembly.metadata.module_initializer().unwrap().unwrap();
+        let rva = assembly.metadata.cell(METHOD_DEF, method, 0).unwrap();
+        let body = assembly.sections.pe_data_at(bytes.as_slice(), rva).unwrap();
+        let at = body.as_ptr() as usize - bytes.as_ptr() as usize;
+        let evidence = |bytes: &[u8]| {
+            let report = read_and_check(bytes).unwrap();
+            assert_eq!(report.findings.len(), 1);
+            assert_eq!(report.findings[0].rule, FindingRule::C301);
+            report.findings[0].evidence.clone().unwrap()
+        };
+        assert_eq!(evidence(&bytes), "6 bytes of IL");
+
+        let mut no_header = bytes.clone();
+        no_header[at] = 0;
+        assert_eq!(evidence(&no_header), "no readable method body");
+
+        // The RVA column is the first of the row; find it by its value.
+        let mut nowhere = bytes.clone();
+        let cell = bytes
+            .windows(4)
+            .position(|w| w == rva.to_le_bytes())
+            .unwrap();
+        nowhere[cell..cell + 4].copy_from_slice(&0x7000u32.to_le_bytes());
+        assert_eq!(evidence(&nowhere), "no readable method body");
     }
 
     /// A package view over bytes in memory.

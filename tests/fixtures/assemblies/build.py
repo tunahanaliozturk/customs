@@ -12,6 +12,8 @@ that file.
 Wide.dll is generated: enough long method names to push the string heap over
 64 KiB, so that its indexes are four bytes wide, plus a module initialiser and
 a P/Invoke, which a reader that ignores the wide flag would misread.
+FatInit has sixteen module initialisers, so the .cctor of <Module> holds 81
+bytes of IL and needs a fat method header.
 Standard library only.
 """
 
@@ -24,7 +26,7 @@ import tempfile
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent.parent
 ORACLE = ROOT / "tools" / "metadata-oracle"
-PROJECTS = ["ModuleInit", "PInvoke", "Plain", "Marker", "Wide"]
+PROJECTS = ["ModuleInit", "FatInit", "PInvoke", "Plain", "Marker", "Wide"]
 
 
 def wide_source(count=2500):

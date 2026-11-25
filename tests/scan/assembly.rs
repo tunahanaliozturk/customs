@@ -75,6 +75,17 @@ fn a_module_initialiser_in_a_library_is_a_warning() -> TestResult {
     Ok(())
 }
 
+/// 81 bytes of IL do not fit the 63 of a tiny header: the size comes from
+/// the fat header.
+#[test]
+fn a_module_initialiser_with_a_fat_method_header_is_read_through() -> TestResult {
+    let dll = assembly("FatInit.dll")?;
+    let (_, report, _) = scan(&[("lib/net10.0/Contoso.Sample.dll", &dll)])?;
+    let found = one(&report, "C301", "lib/net10.0/Contoso.Sample.dll")?;
+    assert_eq!(found["evidence"], "81 bytes of IL");
+    Ok(())
+}
+
 #[test]
 fn a_module_initialiser_in_an_analyzer_is_an_error() -> TestResult {
     let dll = assembly("ModuleInit.dll")?;
