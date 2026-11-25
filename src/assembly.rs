@@ -1526,40 +1526,97 @@ mod tests {
         assert!(metadata.name(u32::MAX).is_err());
     }
 
-    /// A metadata reader that read every name to its end would take
-    /// quadratic time here: 200,000 types and imports that all point at one
-    /// name of a megabyte with no end.
-    #[test]
-    fn rows_that_all_point_at_one_endless_name_are_read_in_linear_time() {
-        let rows = 200_000u32;
+    /// `rows` types, methods of `<Module>` and imports whose names all point
+    /// at one name of `8 * rows` bytes with no end, but for one import of
+    /// `VirtualProtect` from a module of that endless name.
+    fn endless_names(rows: u32) -> Vec<u8> {
+        const ENDLESS: [u8; 2] = 16u16.to_le_bytes();
         let mut tables = Vec::new();
-        for _ in 0..rows {
+        for row in 1..=rows {
             // TypeDef: flags, name, namespace, extends (4 bytes, as the
-            // table has over 2^14 rows), field list, method list.
-            tables.extend([0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0]);
+            // table has over 2^14 rows), field list, method list (4 bytes,
+            // as MethodDef has over 2^16 rows). <Module> owns every method.
+            tables.extend([0, 0, 0, 0]);
+            tables.extend([ENDLESS, ENDLESS].concat());
+            tables.extend([0, 0, 0, 0, 1, 0]);
+            tables.extend(if row == 1 { 1 } else { rows + 1 }.to_le_bytes());
         }
         for _ in 0..rows {
-            // ImplMap: flags, member, import name, module.
-            tables.extend([0, 0, 0, 0, 1, 0, 0, 0]);
+            // MethodDef: RVA, impl flags, RTSpecialName, name, signature,
+            // param list.
+            tables.extend([0, 0, 0, 0, 0, 0, 0, 0x10]);
+            tables.extend(ENDLESS);
+            tables.extend([0, 0, 1, 0]);
         }
-        let mut heap = vec![0];
-        heap.extend(vec![b'A'; 1 << 20]);
-        let bytes = metadata_root(&[
+        // ModuleRef: the endless name.
+        tables.extend(ENDLESS);
+        for row in 0..rows {
+            // ImplMap: flags, member (4 bytes), import name, module.
+            tables.extend([0, 0, 3, 0, 0, 0]);
+            tables.extend(if row == 0 {
+                1u16.to_le_bytes()
+            } else {
+                ENDLESS
+            });
+            tables.extend([1, 0]);
+        }
+        let mut heap = b"\0VirtualProtect\0".to_vec();
+        heap.extend(vec![b'A'; 8 * size(rows)]);
+        metadata_root(&[
             (
                 "#~",
-                table_stream(0, &[(TYPE_DEF, rows), (IMPL_MAP, rows)], &[], &tables),
+                table_stream(
+                    0,
+                    &[
+                        (TYPE_DEF, rows),
+                        (METHOD_DEF, rows),
+                        (MODULE_REF, 1),
+                        (IMPL_MAP, rows),
+                    ],
+                    &[],
+                    &tables,
+                ),
             ),
             ("#Strings", heap),
-        ]);
-        let started = Instant::now();
+        ])
+    }
+
+    /// The fastest of three checks of `endless_names(rows)`.
+    fn check_time(rows: u32) -> Duration {
+        let bytes = endless_names(rows);
         let assembly = Assembly {
             bytes: &[],
             sections: SectionTable::default(),
             metadata: parse(&bytes).unwrap(),
         };
-        let report = assembly.check("lib/a.dll", &Limits::default()).unwrap();
-        assert_eq!(report.findings, Vec::new());
-        assert!(started.elapsed() < Duration::from_secs(60));
+        (0..3)
+            .map(|_| {
+                let started = Instant::now();
+                let report = assembly.check("lib/a.dll", &Limits::default()).unwrap();
+                let elapsed = started.elapsed();
+                assert_eq!(report.findings.len(), 1);
+                assert_eq!(
+                    report.findings[0].evidence,
+                    Some(format!("{}!VirtualProtect", "A".repeat(240)))
+                );
+                elapsed
+            })
+            .min()
+            .unwrap()
+    }
+
+    /// A reader that read every name to its end would take time in the
+    /// rows times the name, and the name grows with the rows here: doubling
+    /// both would take four times as long. Names compared in place keep it
+    /// near twice; the bound is three times, plus 10 ms for timer noise.
+    #[test]
+    fn rows_that_all_point_at_one_endless_name_are_read_in_linear_time() {
+        let base = check_time(100_000);
+        let double = check_time(200_000);
+        assert!(
+            double < base * 3 + Duration::from_millis(10),
+            "100,000 rows {base:?}, 200,000 rows {double:?}"
+        );
     }
 
     #[test]
