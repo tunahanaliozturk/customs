@@ -1,0 +1,20 @@
+<Project>
+  <!-- Shared by the assembly fixtures. They are compiled by build.py and
+       committed as binaries; nothing in them does anything when loaded, and
+       customs never loads them anyway. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <DebugType>none</DebugType>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- CA2255 warns that [ModuleInitializer] is meant for applications. A
+         module initialiser in a library is exactly what the fixtures need. -->
+    <NoWarn>$(NoWarn);CA2255</NoWarn>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+</Project>

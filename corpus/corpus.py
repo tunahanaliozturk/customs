@@ -2,12 +2,15 @@
 
     python corpus/corpus.py list [--count 300]   writes corpus/benign.txt
     python corpus/corpus.py fetch [--dir DIR]    downloads what benign.txt pins
+    python corpus/corpus.py oracle [--dir DIR]   writes corpus/metadata-oracle.jsonl
 
 `list` asks the nuget.org search API for the most downloaded packages,
 downloads each latest stable version once and pins its SHA-512. `fetch`
 downloads the pinned versions into DIR (default target/corpus, which git
 ignores) and checks every file against its pinned hash; a mismatch is an
 error and the file is not kept. Only nuget.org over HTTPS is contacted.
+`oracle` runs tools/metadata-oracle over the fetched packages, which needs
+the .NET SDK; customs's corpus test compares its metadata reader with it.
 Standard library only.
 """
 
@@ -19,12 +22,14 @@ import hashlib
 import json
 import os
 import pathlib
+import subprocess
 import sys
 import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LIST = ROOT / "corpus" / "benign.txt"
+ORACLE_OUT = ROOT / "corpus" / "metadata-oracle.jsonl"
 SERVICE_INDEX = "https://api.nuget.org/v3/index.json"
 FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer/"
 # The order is by total downloads. `sortBy=totalDownloads-desc` is not in
@@ -133,6 +138,26 @@ def command_fetch(args):
     )
 
 
+def command_oracle(args):
+    directory = pathlib.Path(args.dir)
+    listed = [directory / file_name(package_id, version) for package_id, version, _ in read_list()]
+    missing = [path.name for path in listed if not path.is_file()]
+    if missing:
+        raise SystemExit(f"{len(missing)} packages missing in {directory}; run fetch first")
+    project = ROOT / "tools" / "metadata-oracle"
+    result = subprocess.run(
+        ["dotnet", "run", "--project", str(project), "-c", "Release", "--", "--digest"]
+        + [str(path) for path in listed],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
+    output = result.stdout.replace(b"\r\n", b"\n")
+    ORACLE_OUT.write_bytes(output)
+    lines = output.count(b"\n")
+    print(f"{lines:,} assemblies in {ORACLE_OUT.relative_to(ROOT)}")
+
+
 def count(text):
     """A package count the search API accepts in one query."""
     value = int(text)
@@ -149,8 +174,10 @@ def main():
     make.add_argument("--dir", default=str(ROOT / "target" / "corpus"))
     fetch = commands.add_parser("fetch", help="download and check the pinned packages")
     fetch.add_argument("--dir", default=str(ROOT / "target" / "corpus"))
+    oracle = commands.add_parser("oracle", help="run the metadata oracle over the packages")
+    oracle.add_argument("--dir", default=str(ROOT / "target" / "corpus"))
     args = parser.parse_args()
-    {"list": command_list, "fetch": command_fetch}[args.command](args)
+    {"list": command_list, "fetch": command_fetch, "oracle": command_oracle}[args.command](args)
 
 
 if __name__ == "__main__":
