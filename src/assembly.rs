@@ -13,9 +13,9 @@
 
 use std::collections::BTreeMap;
 
-use object::FileKind;
 use object::pe;
 use object::read::pe::{ImageNtHeaders, PeFile, SectionTable};
+use object::{FileKind, LittleEndian as LE};
 
 use crate::inventory::{Asset, ManagedRole, NativeFormat};
 use crate::package::{Entry, Files, Limits, PackagePath, thousands};
@@ -674,6 +674,35 @@ fn headers<Pe: ImageNtHeaders>(
     Ok((file.section_table(), cli))
 }
 
+/// Refuses a section table that readers could map differently (ADR 0006).
+/// `System.Reflection.Metadata` maps an address to the first section whose
+/// virtual range holds it and fails when that section's raw data is not in
+/// the file; `object` takes the first section whose raw bytes hold it and
+/// skips sections whose raw data is not in the file. With the sections in
+/// ascending order, apart, and all in the file, both find the same one.
+fn check_sections(sections: &SectionTable<'_>, file: usize) -> Result<(), Unreadable> {
+    let mut previous_end: Option<u64> = None;
+    let mut previous_start: Option<u32> = None;
+    for section in sections.iter() {
+        let start = section.virtual_address.get(LE);
+        let raw = u64::from(section.size_of_raw_data.get(LE));
+        if raw > 0 && u64::from(section.pointer_to_raw_data.get(LE)) + raw > file as u64 {
+            return Err(Malformed("a section's raw data lies outside the file"));
+        }
+        if previous_start.is_some_and(|p| start <= p) {
+            return Err(Malformed(
+                "the sections are not in ascending order of address",
+            ));
+        }
+        if previous_end.is_some_and(|end| u64::from(start) < end) {
+            return Err(Malformed("two sections overlap"));
+        }
+        previous_start = Some(start);
+        previous_end = Some(u64::from(start) + u64::from(section.virtual_size.get(LE)));
+    }
+    Ok(())
+}
+
 impl<'a> Assembly<'a> {
     /// Reads the PE headers, the CLI header and the metadata.
     fn read(bytes: &'a [u8], limits: &Limits) -> Result<Self, Unreadable> {
@@ -689,6 +718,8 @@ impl<'a> Assembly<'a> {
             Some((0, 0)) | None => return Err(Unreadable::Native),
             Some(range) => range,
         };
+        // Only for managed code: native files are C104 whatever their table.
+        check_sections(&sections, bytes.len())?;
         if length < 72 {
             return Err(Malformed("the CLI header is shorter than 72 bytes"));
         }
@@ -1507,6 +1538,67 @@ mod tests {
             Some(Malformed("the PE headers cannot be read"))
         );
         assert_eq!(read_and_check(b"\x7fELF").err(), Some(Unreadable::NotPe));
+    }
+
+    /// The file offset of the section table and the number of sections.
+    fn section_table(bytes: &[u8]) -> (usize, usize) {
+        let pe = size(u32_at(bytes, 0x3C).unwrap());
+        let count = usize::from(u16::from_le_bytes([bytes[pe + 6], bytes[pe + 7]]));
+        let optional = usize::from(u16::from_le_bytes([bytes[pe + 20], bytes[pe + 21]]));
+        (pe + 24 + optional, count)
+    }
+
+    /// Sets a field of section `index`: 8 is the virtual size, 12 the
+    /// virtual address, 16 the raw size and 20 the raw offset.
+    fn set_section(bytes: &mut [u8], index: usize, field: usize, value: u32) {
+        let (table, _) = section_table(bytes);
+        let at = table + 40 * index + field;
+        bytes[at..at + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    /// Readers pick the section of an address differently:
+    /// `System.Reflection.Metadata` takes the first whose virtual range holds
+    /// it, `object` the first whose raw bytes hold it and are in the file.
+    /// Where the two could differ, the section table is refused.
+    #[test]
+    fn a_section_table_that_readers_could_map_differently_is_refused() {
+        let bytes = fixture("ModuleInit.dll");
+        assert_eq!(section_table(&bytes).1, 3);
+        assert!(read_and_check(&bytes).is_ok());
+
+        // .rsrc starts inside .text.
+        let mut overlap = bytes.clone();
+        set_section(&mut overlap, 1, 12, 0x2100);
+        assert_eq!(
+            read_and_check(&overlap).err(),
+            Some(Malformed("two sections overlap"))
+        );
+
+        // .rsrc and .reloc swapped: no overlap, but out of order.
+        let mut swapped = bytes.clone();
+        let (table, _) = section_table(&bytes);
+        swapped[table + 40..table + 80].copy_from_slice(&bytes[table + 80..table + 120]);
+        swapped[table + 80..table + 120].copy_from_slice(&bytes[table + 40..table + 80]);
+        assert_eq!(
+            read_and_check(&swapped).err(),
+            Some(Malformed(
+                "the sections are not in ascending order of address"
+            ))
+        );
+
+        // .reloc's raw bytes run one byte past the end of the file.
+        let mut outside = bytes.clone();
+        let end = u32::try_from(bytes.len()).unwrap();
+        set_section(&mut outside, 2, 20, end - 0x1FF);
+        assert_eq!(
+            read_and_check(&outside).err(),
+            Some(Malformed("a section's raw data lies outside the file"))
+        );
+        // A section with no raw data, whatever its offset, is not refused.
+        let mut empty = bytes.clone();
+        set_section(&mut empty, 2, 16, 0);
+        set_section(&mut empty, 2, 20, u32::MAX);
+        assert!(read_and_check(&empty).is_ok());
     }
 
     /// A package view over bytes in memory.

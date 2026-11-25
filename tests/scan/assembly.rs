@@ -222,7 +222,7 @@ fn a_dll_where_nuget_expects_managed_code_that_is_not_one_is_c304() -> TestResul
             expect(
                 "ref/net10.0/Cut.dll",
                 "warning",
-                "the CLI header is outside the file"
+                "a section's raw data lies outside the file"
             ),
         ],
         "{report}"
