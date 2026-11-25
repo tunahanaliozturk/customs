@@ -427,13 +427,6 @@ impl<'a> Metadata<'a> {
         for (table, count) in rows.iter_mut().enumerate() {
             if valid & (1 << table) != 0 {
                 *count = cursor.u32("the row counts run past the #~ stream")?;
-                if *count > limits.table_rows {
-                    return Err(Unreadable::Limit(format!(
-                        "limit reached: {} rows in metadata table 0x{table:02X}, over the limit of {}",
-                        thousands(u64::from(*count)),
-                        thousands(u64::from(limits.table_rows))
-                    )));
-                }
             }
         }
         if heaps & EXTRA_DATA != 0 {
@@ -480,12 +473,25 @@ impl<'a> Metadata<'a> {
             }
             metadata.row_size[table] = row_size;
             metadata.start[table] = usize::try_from(offset).unwrap_or(usize::MAX);
-            // At most 2^24 rows of at most 36 bytes in each of 45 tables:
+            // At most 2^32 rows of at most 36 bytes in each of 45 tables:
             // this cannot overflow a u64, and the check below bounds it.
             offset += u64::from(rows[table]) * row_size as u64;
         }
+        // The size first: a count the stream cannot hold is malformed,
+        // whatever the limit, and only a count that fits is a limit reached.
         if offset > tables.len() as u64 {
             return Err(Malformed("the tables are larger than the #~ stream"));
+        }
+        if let Some((table, count)) = rows
+            .iter()
+            .enumerate()
+            .find(|(_, n)| **n > limits.table_rows)
+        {
+            return Err(Unreadable::Limit(format!(
+                "limit reached: {} rows in metadata table 0x{table:02X}, over the limit of {}",
+                thousands(u64::from(*count)),
+                thousands(u64::from(limits.table_rows))
+            )));
         }
         Ok(metadata)
     }
@@ -1360,6 +1366,21 @@ mod tests {
         ));
         let at = metadata_root(&[("#~", table_stream(0, &[(MODULE_REF, 2)], &[], &[0; 4]))]);
         assert!(Metadata::parse(&at, &limits).is_ok());
+    }
+
+    /// A small file that claims more rows than a token can address is
+    /// malformed, not a limit reached: its tables are not there.
+    #[test]
+    fn a_row_count_over_the_limit_in_a_stream_too_small_for_it_is_refused() {
+        for rows in [0x0100_0000, u32::MAX] {
+            let bytes =
+                metadata_root(&[("#~", table_stream(0, &[(MODULE_REF, rows)], &[], &[0; 6]))]);
+            assert_eq!(
+                parse(&bytes).err(),
+                Some(Malformed("the tables are larger than the #~ stream")),
+                "{rows} rows"
+            );
+        }
     }
 
     #[test]
