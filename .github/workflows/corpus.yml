@@ -36,4 +36,5 @@ jobs:
         with:
           path: target/corpus
           key: corpus-${{ hashFiles('corpus/benign.txt') }}
-      - run: cargo test --release --test corpus -- --ignored
+      # The reviewed findings, and the metadata reader against the oracle.
+      - run: cargo test --release -- --ignored corpus

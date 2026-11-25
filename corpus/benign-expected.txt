@@ -6,18 +6,25 @@
 # Notes are counted per rule: `notes RULE COUNT`.
 # Warnings and errors are listed one per line, with what the construct does:
 # ID VERSION RULE PATH:LINE EVIDENCE | reason
+# Assembly findings (C3xx) have no line and are listed as ID VERSION RULE PATH EVIDENCE.
 # Sorted by ID, version, rule, path and line, line numbers compared as numbers.
 # The test compares sets, so the order is for people.
 #
-# Reviewed on 2026-11-22 by reading each flagged line in the package.
+# Reviewed on 2026-11-22 by reading each flagged line in the package. The
+# assembly findings were reviewed on 2026-11-25 by listing the methods that
+# declare each import with System.Reflection.Metadata.
 
 notes C101 68
 notes C102 21
 notes C103 12
-notes C104 14
+notes C104 16
 notes C202 28
 notes C207 8
 
+EO.WebBrowser 26.3.58 C302 lib/EO.Base.dll kernel32.dll!CreateRemoteThread | EO.WebBrowser is a commercial Chromium browser control from Essential Objects that runs the browser in its own process, tools/eowp.exe; EO.Base is obfuscated (types such as unur and kxmk), so what calls this import could not be read from its names
+EO.WebBrowser 26.3.58 C302 lib/EO.Base.dll kernel32.dll!VirtualAllocEx | EO.WebBrowser is a commercial Chromium browser control from Essential Objects that runs the browser in its own process, tools/eowp.exe; EO.Base is obfuscated (types such as unur and kxmk), so what calls this import could not be read from its names
+EO.WebBrowser 26.3.58 C302 lib/EO.Base.dll kernel32.dll!VirtualProtectEx | EO.WebBrowser is a commercial Chromium browser control from Essential Objects that runs the browser in its own process, tools/eowp.exe; EO.Base is obfuscated (types such as unur and kxmk), so what calls this import could not be read from its names
+EO.WebBrowser 26.3.58 C302 lib/EO.Base.dll kernel32.dll!WriteProcessMemory | EO.WebBrowser is a commercial Chromium browser control from Essential Objects that runs the browser in its own process, tools/eowp.exe; EO.Base is obfuscated (types such as unur and kxmk), so what calls this import could not be read from its names
 Microsoft.Extensions.ApiDescription.Server 11.0.0 C203 build/Microsoft.Extensions.ApiDescription.Server.targets:68 $(_DotNetGetDocumentCommand) | runs the package's own tools/dotnet-getdocument.dll on the built assembly to write OpenAPI documents, when OpenApiGenerateDocuments is on; the command is built in lines 55 to 63
 Microsoft.Testing.Platform.MSBuild 2.5.3 C205 buildMultiTargeting/Microsoft.Testing.Platform.MSBuild.VSTest.targets:4 https://aka.ms/migrate-vstest-mtp | a documentation link in the text of an Error task that stops the VSTest target
 Microsoft.Testing.Platform.MSBuild 2.5.3 C205 buildMultiTargeting/Microsoft.Testing.Platform.MSBuild.targets:395 https://aka.ms/dotnet-test-mtp-error | a documentation link in the text of an Error task about VSTest on .NET 10 SDK

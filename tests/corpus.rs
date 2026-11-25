@@ -61,14 +61,16 @@ fn key(finding: &serde_json::Value) -> String {
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
+    // Assembly findings have no line: `path`, not `path:null`.
+    let place = match finding["line"].as_u64() {
+        Some(line) => format!("{}:{line}", text("path")),
+        None => text("path"),
+    };
     format!(
-        "{} {} {} {}:{} {}",
+        "{} {} {} {place} {evidence}",
         text("package"),
         text("version"),
         text("rule"),
-        text("path"),
-        finding["line"],
-        evidence
     )
 }
 
