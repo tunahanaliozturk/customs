@@ -610,18 +610,13 @@ impl<'a> Metadata<'a> {
     }
 
     /// The rows of `ImplMap`: mapping flags, the member as a coded index,
-    /// the import name and the `ModuleRef` row. An empty import name, which
-    /// II.22.22 forbids, is refused: what it binds to is up to the reader.
+    /// the import name and the `ModuleRef` row.
     fn imports(&self) -> impl Iterator<Item = Result<[u32; 4], Unreadable>> + '_ {
         (1..=self.rows[IMPL_MAP]).map(|row| {
-            let name = self.cell(IMPL_MAP, row, 2)?;
-            if name == 0 || self.strings.get(size(name)).is_none_or(|b| *b == 0) {
-                return Err(Malformed("a P/Invoke has an empty import name"));
-            }
             Ok([
                 self.cell(IMPL_MAP, row, 0)?,
                 self.cell(IMPL_MAP, row, 1)?,
-                name,
+                self.cell(IMPL_MAP, row, 2)?,
                 self.cell(IMPL_MAP, row, 3)?,
             ])
         })
@@ -1703,14 +1698,18 @@ mod tests {
         }
     }
 
-    /// ECMA-335 II.22.22: `ImportName` shall index a non-empty string.
+    /// ECMA-335 II.22.22 asks for a non-empty `ImportName`, but C++/CLI
+    /// assemblies that Microsoft ships (`DirectWriteForwarder.dll` and
+    /// `System.Printing.dll` in the `WindowsDesktop` runtime pack 11.0.0) have
+    /// empty ones. Refusing them made those assemblies C304, so an empty
+    /// import name is read, and matches nothing on the short list.
     #[test]
-    fn an_import_without_a_name_is_refused() {
+    fn an_import_without_a_name_is_read_and_matches_nothing() {
         assert_eq!(check_import(1).unwrap().findings.len(), 1);
         for name in [0, 16] {
             assert_eq!(
-                check_import(name).err(),
-                Some(Malformed("a P/Invoke has an empty import name")),
+                check_import(name).map(|r| r.findings),
+                Ok(Vec::new()),
                 "name index {name}"
             );
         }

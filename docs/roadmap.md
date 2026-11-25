@@ -19,6 +19,7 @@ Questions for the adversarial review of the metadata reader, recorded at the M3 
 
 - Does CoreCLR compare metadata stream names ignoring case? customs compares them exactly, so a lower-case `#strings` beside `#Strings` passes its check for two streams of one name. If the runtime folds case, the two are one name to it and two to customs.
 - How does CoreCLR's `PEDecoder` treat overlapping sections, and sections out of address order? customs refuses both since the M3 review round (ADR 0006); whether the runtime loads such a file decides whether this was a way past customs or only an oddity it now refuses.
+- What does CoreCLR bind a P/Invoke with an empty import name to? Microsoft's C++/CLI assemblies have such rows (ADR 0006). If the runtime falls back to the method's own name, a `VirtualProtect` declared with an empty import name passes C302 today.
 
 ## Progress
 
