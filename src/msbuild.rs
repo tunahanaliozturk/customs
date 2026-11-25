@@ -469,7 +469,7 @@ pub(crate) fn scan(
                     " (in a file not imported by any entry point through a literal path)",
                 );
             }
-            outcome.findings.push(found);
+            outcome.add(found, limits.findings_per_package);
         }
         outcome.gaps.extend(file.gap);
         assemblies.extend(

@@ -931,12 +931,12 @@ pub(crate) fn scan(
             .and_then(|assembly| assembly.check(path.as_str(), limits));
         let problem = match report {
             Ok(report) => {
-                outcome.findings.extend(
-                    report
-                        .findings
-                        .into_iter()
-                        .map(|f| if raise { f.raised() } else { f }),
-                );
+                for f in report.findings {
+                    outcome.add(
+                        if raise { f.raised() } else { f },
+                        limits.findings_per_package,
+                    );
+                }
                 outcome.gaps.extend(report.gaps);
                 continue;
             }
@@ -970,9 +970,10 @@ pub(crate) fn scan(
             "not a readable managed assembly".to_owned(),
         );
         found.evidence = Some(reason.to_owned());
-        outcome
-            .findings
-            .push(if raise { found.raised() } else { found });
+        outcome.add(
+            if raise { found.raised() } else { found },
+            limits.findings_per_package,
+        );
     }
 }
 

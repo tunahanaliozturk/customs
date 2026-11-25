@@ -26,8 +26,12 @@ pub(crate) struct Limits {
     pub(crate) assembly_bytes: u64,
     /// Rows in one metadata table. A token keeps 24 bits for the row.
     pub(crate) table_rows: u32,
-    /// Findings listed from one MSBuild file; past it, one C002 gap.
+    /// Findings listed from one MSBuild file or one assembly; past it, one
+    /// C002 gap for that file.
     pub(crate) findings_per_file: u64,
+    /// Findings of the MSBuild and assembly rules listed for one package;
+    /// past it, one C002 gap for the package.
+    pub(crate) findings_per_package: u64,
     /// XML nodes in one MSBuild document.
     pub(crate) xml_nodes: u64,
     /// Bytes of the central directory of one archive.
@@ -52,6 +56,7 @@ impl Default for Limits {
             assembly_bytes: 256 * MIB,
             table_rows: 0x00FF_FFFF,
             findings_per_file: 1_000,
+            findings_per_package: 10_000,
             xml_nodes: 200_000,
             directory_bytes: 64 * MIB,
             ratio: 200,

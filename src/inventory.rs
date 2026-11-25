@@ -9,8 +9,8 @@ use serde::Serialize;
 use crate::assembly;
 use crate::graph::lower_invariant;
 use crate::msbuild;
-use crate::package::{Entry, Files, Limits, PackagePath};
-use crate::scan::{Finding, FindingRule, Outcome};
+use crate::package::{Entry, Files, Limits, PackagePath, thousands};
+use crate::scan::{Finding, FindingRule, Gap, GapRule, Outcome};
 
 /// What a file in a package is, as far as M1 can tell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -274,6 +274,19 @@ pub(crate) fn inspect(
     }
     assets.sort_by(|a, b| a.0.cmp(&b.0));
     assembly::scan(files, &entries, &mut assets, limits, &mut outcome);
+    if outcome.dropped > 0 {
+        outcome.gaps.push(Gap::new(
+            GapRule::C002,
+            None,
+            format!(
+                "limit reached: {} more findings in this package were not listed (the limit is {} per package)",
+                thousands(outcome.dropped),
+                thousands(limits.findings_per_package)
+            ),
+        ));
+    }
+    // The inventory's notes, one per asset at most, are bounded by the
+    // entry limit and not counted against the findings limit.
     outcome.findings.extend(findings(&assets));
     outcome.findings.sort();
     outcome.gaps.sort();
@@ -371,6 +384,7 @@ fn findings(assets: &[(PackagePath, Asset)]) -> Vec<Finding> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::folder::Folder;
 
     fn class(path: &str) -> Class {
         classify(
@@ -492,5 +506,81 @@ mod tests {
         assert_eq!(sniff(b"MZ\x90\x00"), Some(NativeFormat::Pe));
         assert_eq!(sniff(b"\x7fEL"), None);
         assert_eq!(sniff(b""), None);
+    }
+
+    /// Three `Exec` tasks, a module initialiser and two P/Invokes: six
+    /// findings of the MSBuild and assembly rules in one package.
+    fn package_with_six_findings() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let assemblies = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join("assemblies");
+        std::fs::create_dir_all(root.join("build")).unwrap();
+        std::fs::create_dir_all(root.join("lib").join("net8.0")).unwrap();
+        std::fs::write(
+            root.join("build").join("Contoso.Tools.targets"),
+            r#"<Project><Target Name="T"><Exec Command="a" /><Exec Command="b" /><Exec Command="c" /></Target></Project>"#,
+        )
+        .unwrap();
+        for (name, file) in [("ModuleInit.dll", "a.dll"), ("PInvoke.dll", "b.dll")] {
+            std::fs::copy(
+                assemblies.join(name),
+                root.join("lib").join("net8.0").join(file),
+            )
+            .unwrap();
+        }
+        dir
+    }
+
+    fn counted(outcome: &Outcome) -> usize {
+        outcome
+            .findings
+            .iter()
+            .filter(|f| {
+                matches!(
+                    f.rule,
+                    FindingRule::C203 | FindingRule::C301 | FindingRule::C302
+                )
+            })
+            .count()
+    }
+
+    #[test]
+    fn findings_past_the_limit_of_one_package_are_one_gap() {
+        let dir = package_with_six_findings();
+        let at = Limits {
+            findings_per_package: 6,
+            ..Limits::default()
+        };
+        let (_, outcome) = inspect(&mut Folder::new(dir.path()), "Contoso.Tools", &at);
+        assert_eq!(counted(&outcome), 6);
+        assert_eq!(outcome.gaps, Vec::new());
+
+        let over = Limits {
+            findings_per_package: 4,
+            ..Limits::default()
+        };
+        let (_, outcome) = inspect(&mut Folder::new(dir.path()), "Contoso.Tools", &over);
+        assert_eq!(counted(&outcome), 4);
+        assert_eq!(outcome.gaps.len(), 1, "{:?}", outcome.gaps);
+        assert_eq!(outcome.gaps[0].path, None);
+        assert!(
+            outcome.gaps[0].message.contains("2 more findings"),
+            "{}",
+            outcome.gaps[0].message
+        );
+        // The inventory's own notes are not counted against the limit.
+        assert!(outcome.findings.iter().any(|f| f.rule == FindingRule::C101));
+
+        // The MSBuild rules, which run first, stop at the limit too.
+        let two = Limits {
+            findings_per_package: 2,
+            ..Limits::default()
+        };
+        let (_, outcome) = inspect(&mut Folder::new(dir.path()), "Contoso.Tools", &two);
+        assert_eq!(counted(&outcome), 2);
+        assert!(outcome.gaps[0].message.contains("4 more findings"));
     }
 }

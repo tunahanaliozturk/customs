@@ -291,11 +291,14 @@ Starting values. Each has a test with an input just over it. Reaching one produc
 | Decompression ratio while reading an entry | 200 to 1 |
 | Total bytes read per package | 512 MiB |
 | XML nodes per document | 200,000 (roxmltree `nodes_limit`) |
-| Findings listed from one MSBuild file | 1,000, of which at most 100 C207 |
+| Findings listed from one MSBuild file or one assembly | 1,000; of an MSBuild file's, at most 100 C207 |
+| Findings of the MSBuild and assembly rules listed for one package | 10,000 |
 | Metadata table rows | 16,777,215 (2^24 - 1) per table, as a token row index has 24 bits |
 | Download size | 1 GiB, with a 60 second timeout |
 
 The assembly cap was 128 MiB until the first corpus run of M3: `lib/EO.WebEngine.dll` in EO.WebBrowser 26.3.58 is 169,275,808 bytes. 256 MiB keeps one such assembly well inside the 512 MiB budget of its package.
+
+The findings limit per package came from data on 2026-11-25: the most findings of the MSBuild and assembly rules (C004, C2xx, C3xx) in one package were 73 in a local cache of 4,422 package versions (Microsoft.DotNet.Arcade.Sdk 12.0.0-beta.26477.101) and 11 in the benign corpus (Microsoft.VisualStudio.Azure.Containers.Tools.Targets 1.23.0). 10,000 is more than a hundred times the largest. It counts every finding the package already has when an MSBuild or assembly finding is added, C003 included; the inventory's own notes, at most one per entry, come after and are not counted. Past it, one C002 gap on the package gives the number not listed.
 
 Entries that no rule needs to read, such as documentation, images and large native files, are listed by name and size and never decompressed. That keeps a scan of a graph with large runtime packages cheap.
 

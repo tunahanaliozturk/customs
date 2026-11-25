@@ -269,6 +269,21 @@ pub(crate) struct Outcome {
     pub(crate) findings: Vec<Finding>,
     pub(crate) gaps: Vec<Gap>,
     pub(crate) budget: Budget,
+    /// Findings of the MSBuild and assembly rules not listed, because the
+    /// package already had `findings_per_package` findings.
+    pub(crate) dropped: u64,
+}
+
+impl Outcome {
+    /// Lists a finding of the MSBuild or assembly rules, or counts it as
+    /// dropped once the package has `limit` findings.
+    pub(crate) fn add(&mut self, finding: Finding, limit: u64) {
+        if self.findings.len() as u64 >= limit {
+            self.dropped += 1;
+        } else {
+            self.findings.push(finding);
+        }
+    }
 }
 
 /// Where a package came from.
