@@ -13,6 +13,13 @@ Each milestone ends with a test that has to pass. A milestone is not done becaus
 | M6 | Fuzzing and hardening | cargo-fuzz targets for archive listing, XML rules, PE and metadata, lock and assets parsing, with a Linux CI job. proptest on every parser on all three OS. Malformed-archive differential against .NET. Terminal escaping review. An adversarial review of the MSBuild rules: a second person builds packages designed to get past them. Settle open questions 6 and 13. | One hour per fuzz target with no crash, no hang and no allocation over the limits. Every malformed archive on which `zip` and .NET disagree is reported as C003. A package with ANSI escapes and bidirectional overrides in its paths and attributes prints them escaped in the golden test. |
 | M7 | Documentation and release | README with the corpus numbers and the "cannot see" list, a usage example for a GitHub Actions workflow, an architecture diagram as light and dark PNG made from a script, `CHANGELOG.md`. `publish = true` and tag v0.1.0, both only after the owner says yes. | Every number in the README is reproduced by the commands listed next to it. `cargo install --path .` and a scan of the fixtures pass in CI on Linux, macOS and Windows. |
 
+### Open for M6
+
+Questions for the adversarial review of the metadata reader, recorded at the M3 review round on 2026-11-25 and not yet answered:
+
+- Does CoreCLR compare metadata stream names ignoring case? customs compares them exactly, so a lower-case `#strings` beside `#Strings` passes its check for two streams of one name. If the runtime folds case, the two are one name to it and two to customs.
+- How does CoreCLR's `PEDecoder` treat overlapping sections, and sections out of address order? customs refuses both since the M3 review round (ADR 0006); whether the runtime loads such a file decides whether this was a way past customs or only an oddity it now refuses.
+
 ## Progress
 
 - **M0**, 2026-11-22: done. Scaffold copied from waystation's shape, design, roadmap and five ADRs. The binary prints `customs 0.0.0`. `cargo fmt`, `cargo clippy` with warnings as errors, `cargo build` and `cargo test` pass locally on Windows; CI has since run on GitHub and is green.
