@@ -576,13 +576,18 @@ impl<'a> Metadata<'a> {
     }
 
     /// The rows of `ImplMap`: mapping flags, the member as a coded index,
-    /// the import name and the `ModuleRef` row.
+    /// the import name and the `ModuleRef` row. An empty import name, which
+    /// II.22.22 forbids, is refused: what it binds to is up to the reader.
     fn imports(&self) -> impl Iterator<Item = Result<[u32; 4], Unreadable>> + '_ {
         (1..=self.rows[IMPL_MAP]).map(|row| {
+            let name = self.cell(IMPL_MAP, row, 2)?;
+            if name == 0 || self.strings.get(size(name)).is_none_or(|b| *b == 0) {
+                return Err(Malformed("a P/Invoke has an empty import name"));
+            }
             Ok([
                 self.cell(IMPL_MAP, row, 0)?,
                 self.cell(IMPL_MAP, row, 1)?,
-                self.cell(IMPL_MAP, row, 2)?,
+                name,
                 self.cell(IMPL_MAP, row, 3)?,
             ])
         })
@@ -1450,6 +1455,37 @@ mod tests {
         );
         assert_eq!(report.gaps.len(), 1);
         assert!(report.gaps[0].message.contains("2 more"));
+    }
+
+    /// Checks metadata with one `ImplMap` row whose import name is at `name`
+    /// in a heap that holds `VirtualProtect` at 1 and an empty string at 16.
+    fn check_import(name: u16) -> Result<Report, Unreadable> {
+        let mut tables = vec![0, 0, 1, 0];
+        tables.extend(name.to_le_bytes());
+        tables.extend([0, 0]);
+        let bytes = metadata_root(&[
+            ("#~", table_stream(0, &[(IMPL_MAP, 1)], &[], &tables)),
+            ("#Strings", b"\0VirtualProtect\0\0".to_vec()),
+        ]);
+        let assembly = Assembly {
+            bytes: &[],
+            sections: SectionTable::default(),
+            metadata: parse(&bytes).unwrap(),
+        };
+        assembly.check("lib/a.dll", &Limits::default())
+    }
+
+    /// ECMA-335 II.22.22: `ImportName` shall index a non-empty string.
+    #[test]
+    fn an_import_without_a_name_is_refused() {
+        assert_eq!(check_import(1).unwrap().findings.len(), 1);
+        for name in [0, 16] {
+            assert_eq!(
+                check_import(name).err(),
+                Some(Malformed("a P/Invoke has an empty import name")),
+                "name index {name}"
+            );
+        }
     }
 
     fn read_and_check(bytes: &[u8]) -> Result<Report, Unreadable> {

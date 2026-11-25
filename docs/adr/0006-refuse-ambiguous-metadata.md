@@ -13,6 +13,7 @@ ECMA-335 and its readers leave room for that. Checked against `System.Reflection
 - **Pointer and edit-and-continue tables in a `#~` stream.** `System.Reflection.Metadata` refuses the pointer tables and `EncMap` there and accepts `EncLog`, which it then treats as empty.
 - **The edit-and-continue delta flag (0x20 in the heap sizes).** In `System.Reflection.Metadata` it makes every table index four bytes wide whatever the row counts say, so every row after it moves.
 - **Table bits above 0x2C.** Unknown tables, or the portable PDB tables, which never belong in an assembly.
+- **A P/Invoke with an empty import name.** II.22.22 requires `ImportName` to index a non-empty string. `System.Reflection.Metadata` returns the empty name without complaint, and what the runtime then binds to is not something customs can match against its list.
 - **The "extra data" flag (0x40).** Four bytes after the row counts. The standard does not have it; the runtime's native reader and `System.Reflection.Metadata` both skip the four bytes, and obfuscators set it so that tools that follow the standard misread every table.
 
 Two ways to deal with these:
