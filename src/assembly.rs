@@ -748,9 +748,9 @@ impl<'a> Assembly<'a> {
             }
             _ => return Err(Unreadable::NotPe),
         };
-        let (rva, length) = match cli {
-            Some((0, 0)) | None => return Err(Unreadable::Native),
-            Some(range) => range,
+        // `object` gives no directory when its address is zero.
+        let Some((rva, length)) = cli else {
+            return Err(Unreadable::Native);
         };
         // Only for managed code: native files are C104 whatever their table.
         check_sections(&sections, bytes.len())?;
@@ -1770,6 +1770,19 @@ mod tests {
             .unwrap();
         nowhere[cell..cell + 4].copy_from_slice(&0x7000u32.to_le_bytes());
         assert_eq!(evidence(&nowhere), "no readable method body");
+    }
+
+    /// Native code is a CLI directory whose address is zero, whatever its
+    /// size says, as `object` and the runtime read it.
+    #[test]
+    fn a_cli_directory_with_address_zero_is_native_code() {
+        let mut bytes = fixture("Plain.dll");
+        let optional = size(u32_at(&bytes, 0x3C).unwrap()) + 24;
+        assert_eq!(bytes[optional..optional + 2], [0x0b, 0x01]);
+        let cli = optional + 96 + 14 * 8;
+        bytes[cli..cli + 4].fill(0);
+        assert_ne!(u32_at(&bytes, cli + 4), Some(0));
+        assert_eq!(read_and_check(&bytes).err(), Some(Unreadable::Native));
     }
 
     /// A package view over bytes in memory.
