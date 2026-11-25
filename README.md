@@ -8,7 +8,7 @@ At a border, customs officers open the crates and list what is inside before any
 
 ## Status
 
-Milestones M1 and M2 of seven are done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder. It lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code, and it reads every `.props`, `.targets` and `.tasks` file of every package, and any file an import reaches from them, for inline tasks, `Exec`, `DownloadFile`, URLs and long base64 strings, at file and line, following literal imports from the entry points. It says so, with exit code 3, when it could not look at everything. It does not read assemblies (M3) yet, it does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
+Milestones M1 to M3 of seven are done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder. It lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code, and it reads every `.props`, `.targets` and `.tasks` file of every package, and any file an import reaches from them, for inline tasks, `Exec`, `DownloadFile`, URLs and long base64 strings, at file and line, following literal imports from the entry points. It reads every managed assembly with a metadata reader of its own and reports module initialisers, P/Invokes that change memory protection or write to another process, a known obfuscator marker, and `.dll` files that are not readable managed code; in an analyzer or a build-time assembly each of these is one step more severe. It says so, with exit code 3, when it could not look at everything. It does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
 
 ## Try it
 
@@ -50,17 +50,18 @@ The benign corpus is the 300 most downloaded packages on nuget.org, pinned in [c
 | --- | --- |
 | C203 `Exec` task | 2 |
 | C205 URL | 1 |
-| C201, C204, C206, C004, C003 | 0 |
+| C302 P/Invoke to a memory or process function | 1 |
+| C201, C204, C206, C004, C003, C301, C304 | 0 |
 
 No package in the corpus produces an error. Every warning is explained in [corpus/benign-expected.txt](corpus/benign-expected.txt). To reproduce the numbers:
 
 ```
 python corpus/corpus.py fetch
-cargo test --release --test corpus -- --ignored
+cargo test --release -- --ignored corpus
 cargo run --release --quiet -- scan target/corpus/*.nupkg --format json --fail-on never
 ```
 
-The first command downloads the 300 packages (849,380,928 bytes) into `target/corpus` and checks each against its pinned SHA-512. The second checks the scan against the reviewed list. The third prints the report the table counts.
+The first command downloads the 300 packages (849,380,928 bytes) into `target/corpus` and checks each against its pinned SHA-512. The second checks the scan against the reviewed list, and checks customs's metadata reader against `System.Reflection.Metadata` on all 2,762 `.dll` and `.exe` entries of the corpus (the row count of every table, the module initialiser and every P/Invoke), from the committed output of `tools/metadata-oracle`. The third prints the report the table counts.
 
 ## Documents
 
