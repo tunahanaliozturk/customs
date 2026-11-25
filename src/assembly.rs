@@ -529,22 +529,31 @@ impl<'a> Metadata<'a> {
     }
 
     /// The string at `index`, up to its NUL, read for at most
-    /// [`NAME_LIMIT`] bytes. Index 0 is the empty string, also when there is
-    /// no string heap.
-    fn name(&self, index: u32) -> Result<&'a [u8], Unreadable> {
+    /// [`NAME_LIMIT`] bytes, and whether the NUL was found. Index 0 is the
+    /// empty string, also when there is no string heap.
+    fn prefix(&self, index: u32) -> Result<(&'a [u8], bool), Unreadable> {
         if index == 0 {
-            return Ok(&[]);
+            return Ok((&[], true));
         }
         let rest = self
             .strings
             .get(size(index)..)
             .ok_or(Malformed("a name points outside the string heap"))?;
         let window = &rest[..rest.len().min(NAME_LIMIT)];
-        let end = window
-            .iter()
-            .position(|b| *b == 0)
-            .ok_or(Malformed("a name has no end within 1,024 bytes"))?;
-        Ok(&window[..end])
+        Ok(match window.iter().position(|b| *b == 0) {
+            Some(end) => (&window[..end], true),
+            None => (window, false),
+        })
+    }
+
+    /// The whole string at `index`; one with no end within [`NAME_LIMIT`]
+    /// bytes is refused. For the oracle tests, which compare whole names.
+    #[cfg(test)]
+    fn name(&self, index: u32) -> Result<&'a [u8], Unreadable> {
+        match self.prefix(index)? {
+            (name, true) => Ok(name),
+            (_, false) => Err(Malformed("a name has no end within 1,024 bytes")),
+        }
     }
 
     /// The `MethodDef` row of the module initialiser: a method of
@@ -617,12 +626,13 @@ impl<'a> Metadata<'a> {
         })
     }
 
-    /// The name of a `ModuleRef` row; row 0 is no module.
+    /// The name of a `ModuleRef` row, for a message: one longer than
+    /// [`NAME_LIMIT`] bytes is cut there, not refused. Row 0 is no module.
     fn module_name(&self, row: u32) -> Result<&'a [u8], Unreadable> {
         if row == 0 {
             return Ok(&[]);
         }
-        self.name(self.cell(MODULE_REF, row, 0)?)
+        Ok(self.prefix(self.cell(MODULE_REF, row, 0)?)?.0)
     }
 }
 
@@ -1598,6 +1608,39 @@ mod tests {
             metadata: parse(&bytes).unwrap(),
         };
         assembly.check("lib/a.dll", &Limits::default())
+    }
+
+    /// A module name too long to read whole is cut, and the findings stay.
+    #[test]
+    fn a_module_name_over_the_name_limit_is_cut_and_the_finding_kept() {
+        for end in [true, false] {
+            let mut heap = b"\0VirtualProtect\0".to_vec();
+            heap.extend(vec![b'A'; NAME_LIMIT + 1]);
+            if end {
+                heap.push(0);
+            }
+            // ModuleRef: name at 16. ImplMap: flags, member, name, module 1.
+            let tables = [16, 0, 0, 0, 1, 0, 1, 0, 1, 0];
+            let bytes = metadata_root(&[
+                (
+                    "#~",
+                    table_stream(0, &[(MODULE_REF, 1), (IMPL_MAP, 1)], &[], &tables),
+                ),
+                ("#Strings", heap),
+            ]);
+            let assembly = Assembly {
+                bytes: &[],
+                sections: SectionTable::default(),
+                metadata: parse(&bytes).unwrap(),
+            };
+            let report = assembly.check("lib/a.dll", &Limits::default()).unwrap();
+            assert_eq!(report.findings.len(), 1, "end {end}");
+            assert_eq!(
+                report.findings[0].evidence,
+                Some(format!("{}!VirtualProtect", "A".repeat(240))),
+                "end {end}"
+            );
+        }
     }
 
     /// ECMA-335 II.22.22: `ImportName` shall index a non-empty string.
