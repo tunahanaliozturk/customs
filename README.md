@@ -51,6 +51,8 @@ customs scan packages.lock.json --baseline customs-baseline.json --format sarif 
 
 The first command exits 0 and writes every finding with a fingerprint that leaves out the version and the line, so the next release of a package keeps its findings accepted unless what they report changed; a changed `Exec` command is reported again on its own (`a_baseline_accepts_a_scan_until_an_exec_command_changes` in `tests/scan/baseline.rs`). The SARIF report places each finding at the line of its package in the lock file, and a test validates it against the SARIF 2.1.0 schema (`tests/scan/sarif.rs`).
 
+A baseline is as trusted as whoever can change it: anyone who can edit the file can make customs accept any finding or gap, including one in a later version of the package. Only an entry's `fingerprint` decides what it accepts; `rule`, `package` and `path` are labels for the reviewer. Put the file under review rules, for example a `CODEOWNERS` line for `customs-baseline.json`, so that a change to it needs the same review as code. To help that review, the scan lists entries that accept nothing and entries whose label is not what they accept, without changing the exit code (`a_baseline_entry_that_accepts_nothing_or_is_mislabelled_is_reported` in `tests/scan/baseline.rs`).
+
 ## What a normal project sees
 
 The benign corpus is the 300 most downloaded packages on nuget.org, pinned in [corpus/benign.txt](corpus/benign.txt) on 2026-11-22. Packages with at least one warning, by rule:

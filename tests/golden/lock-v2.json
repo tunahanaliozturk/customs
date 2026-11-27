@@ -123,5 +123,9 @@
       "accepted": false
     }
   ],
-  "incomplete": []
+  "incomplete": [],
+  "baseline": {
+    "unused": [],
+    "mislabelled": []
+  }
 }

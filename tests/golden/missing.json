@@ -61,5 +61,9 @@
       "fingerprint": "9ac13a92eb2845ea9e2db68122274178",
       "accepted": false
     }
-  ]
+  ],
+  "baseline": {
+    "unused": [],
+    "mislabelled": []
+  }
 }

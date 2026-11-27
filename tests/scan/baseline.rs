@@ -308,6 +308,78 @@ fn accepting_one_cause_of_an_unread_package_does_not_accept_another() -> TestRes
     Ok(())
 }
 
+/// Only the fingerprint of an entry is honoured, so the scan says when an
+/// entry accepts nothing, and when its rule, package or path is not what it
+/// accepts; in every format, and without changing the exit code (review of
+/// M4, finding 3).
+#[test]
+fn a_baseline_entry_that_accepts_nothing_or_is_mislabelled_is_reported() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    package(
+        &dir.path().join("packages"),
+        "Contoso.Gen",
+        "1.0.0",
+        &[("build/Contoso.Gen.targets", &targets("gen"))],
+    )?;
+    lock(dir.path(), "Contoso.Gen", "1.0.0")?;
+    assert_eq!(scan(dir.path(), &["--write-baseline", "b.json"])?.code, 0);
+    let path = dir.path().join("b.json");
+    let mut file: serde_json::Value = serde_json::from_str(&fs::read_to_string(&path)?)?;
+    let accepted = file["accepted"].as_array_mut().ok_or("no accepted list")?;
+    // The C101 entry, relabelled as if it accepted an Exec of another
+    // package.
+    accepted[0]["rule"] = "C203".into();
+    accepted[0]["package"] = "Other.Package".into();
+    accepted.push(serde_json::json!({
+        "fingerprint": "0".repeat(32),
+        "rule": "C203",
+        "package": "Gone.Package",
+        "path": "build/x.targets",
+        "note": "",
+    }));
+    fs::write(&path, serde_json::to_string_pretty(&file)?)?;
+
+    let text = scan(dir.path(), &["--baseline", "b.json"])?;
+    assert_eq!(text.code, 0, "{}", text.stdout);
+    assert!(
+        text.stdout.contains(&format!(
+            "unused   entry {} (C203 Gone.Package build/x.targets) accepts nothing in this scan",
+            "0".repeat(32)
+        )),
+        "{}",
+        text.stdout
+    );
+    assert!(
+        text.stdout
+            .contains("says C203 Other.Package build/Contoso.Gen.targets, but accepts C101 Contoso.Gen build/Contoso.Gen.targets"),
+        "{}",
+        text.stdout
+    );
+
+    let json = scan(dir.path(), &["--baseline", "b.json", "--format", "json"])?;
+    assert_eq!(json.code, 0);
+    let report = json.json()?;
+    assert_eq!(report["baseline"]["unused"][0]["package"], "Gone.Package");
+    assert_eq!(report["baseline"]["mislabelled"][0]["rule"], "C203");
+    assert_eq!(
+        report["baseline"]["mislabelled"][0]["accepts"]["rule"],
+        "C101"
+    );
+
+    let sarif = scan(dir.path(), &["--baseline", "b.json", "--format", "sarif"])?;
+    assert_eq!(sarif.code, 0);
+    let report = sarif.json()?;
+    assert!(crate::sarif::schema()?.is_valid(&report), "{report}");
+    let levels: Vec<&str> = report["runs"][0]["invocations"][0]["toolConfigurationNotifications"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|n| n["level"].as_str())
+        .collect();
+    assert_eq!(levels, ["note", "warning"], "{report}");
+    Ok(())
+}
+
 /// Open question 16: C301 is an error for nine build-time assemblies of
 /// well-known packages in a local cache. A baseline settles it for a team
 /// that uses them: the first scan fails, the accepted finding stays quiet

@@ -8,6 +8,7 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
+use crate::baseline::{self, Fingerprint, Label, Review};
 use crate::inventory::Asset;
 use crate::scan::{
     FailOn, Finding, Gap, InputKind, Origin, Owner, PackageScan, RULES, Scan, Severity, Verdict,
@@ -150,6 +151,7 @@ pub(crate) fn text(scan: &Scan, fail_on: FailOn, out: &mut dyn Write) -> io::Res
         writeln!(out, "{}", escape(input))?;
         gap_line(out, gap, scan.gap_accepted(Owner::Input(input), gap))?;
     }
+    review_lines(scan, out)?;
     let count = |severity: Severity| {
         scan.open_findings()
             .filter(|(_, f)| f.severity == severity)
@@ -186,6 +188,36 @@ pub(crate) fn text(scan: &Scan, fail_on: FailOn, out: &mut dyn Write) -> io::Res
     writeln!(out, "exit {}: {why}", verdict.code())
 }
 
+/// The baseline entries that accept nothing or are mislabelled, as text.
+fn review_lines(scan: &Scan, out: &mut dyn Write) -> io::Result<()> {
+    let review = baseline::review(scan);
+    if !review.is_empty() {
+        writeln!(out)?;
+        writeln!(out, "baseline")?;
+        for (fingerprint, label) in &review.unused {
+            writeln!(
+                out,
+                "  {:<9}{}",
+                "unused",
+                escape(&unused(*fingerprint, label))
+            )?;
+        }
+        for (fingerprint, label, actual) in &review.mislabelled {
+            let message = mislabelled(*fingerprint, label, actual);
+            writeln!(out, "  {:<9}{}", "label", escape(&message))?;
+        }
+    }
+    Ok(())
+}
+
+fn unused(fingerprint: Fingerprint, label: &Label) -> String {
+    format!("entry {fingerprint} ({label}) accepts nothing in this scan")
+}
+
+fn mislabelled(fingerprint: Fingerprint, label: &Label, actual: &Label) -> String {
+    format!("entry {fingerprint} says {label}, but accepts {actual}")
+}
+
 fn gap_line(out: &mut dyn Write, gap: &Gap, accepted: bool) -> io::Result<()> {
     let mut message = match &gap.path {
         Some(path) if !gap.message.contains(path.as_str()) => format!("{}: {path}", gap.message),
@@ -205,6 +237,49 @@ struct Report<'a> {
     packages: Vec<PackageOut<'a>>,
     findings: Vec<FindingOut<'a>>,
     incomplete: Vec<GapOut<'a>>,
+    baseline: BaselineOut<'a>,
+}
+
+/// Entries of the baseline that accept nothing, or whose label is not what
+/// they accept.
+#[derive(Serialize)]
+struct BaselineOut<'a> {
+    unused: Vec<EntryOut<'a>>,
+    mislabelled: Vec<EntryOut<'a>>,
+}
+
+#[derive(Serialize)]
+struct EntryOut<'a> {
+    fingerprint: String,
+    #[serde(flatten)]
+    label: &'a Label,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    accepts: Option<Label>,
+}
+
+impl<'a> From<Review<'a>> for BaselineOut<'a> {
+    fn from(review: Review<'a>) -> Self {
+        Self {
+            unused: review
+                .unused
+                .into_iter()
+                .map(|(fingerprint, label)| EntryOut {
+                    fingerprint: fingerprint.to_string(),
+                    label,
+                    accepts: None,
+                })
+                .collect(),
+            mislabelled: review
+                .mislabelled
+                .into_iter()
+                .map(|(fingerprint, label, actual)| EntryOut {
+                    fingerprint: fingerprint.to_string(),
+                    label,
+                    accepts: Some(actual),
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -363,6 +438,7 @@ pub(crate) fn json(scan: &Scan, out: &mut dyn Write) -> io::Result<()> {
                 }
             })
             .collect(),
+        baseline: baseline::review(scan).into(),
     };
     serde_json::to_writer_pretty(&mut *out, &report)?;
     writeln!(out)
@@ -511,6 +587,21 @@ pub(crate) fn sarif(scan: &Scan, out: &mut dyn Write) -> io::Result<()> {
             sarif_notification(index, owner, gap, scan.gap_accepted(owner, gap))
         })
         .collect();
+    let review = baseline::review(scan);
+    let configuration: Vec<Value> = review
+        .unused
+        .iter()
+        .map(|(fingerprint, label)| ("note", unused(*fingerprint, label)))
+        .chain(
+            review
+                .mislabelled
+                .iter()
+                .map(|(fingerprint, label, actual)| {
+                    ("warning", mislabelled(*fingerprint, label, actual))
+                }),
+        )
+        .map(|(level, message)| json!({"level": level, "message": {"text": escape(&message)}}))
+        .collect();
     let help = format!("{REPOSITORY}/blob/main/docs/design.md#rules");
     let report = json!({
         "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
@@ -535,6 +626,7 @@ pub(crate) fn sarif(scan: &Scan, out: &mut dyn Write) -> io::Result<()> {
             "invocations": [{
                 "executionSuccessful": true,
                 "toolExecutionNotifications": notifications,
+                "toolConfigurationNotifications": configuration,
             }],
             "results": results,
             "properties": {"acceptedByBaseline": scan.accepted_count()},

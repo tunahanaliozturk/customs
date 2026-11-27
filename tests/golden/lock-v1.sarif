@@ -240,7 +240,8 @@
       "invocations": [
         {
           "executionSuccessful": true,
-          "toolExecutionNotifications": []
+          "toolExecutionNotifications": [],
+          "toolConfigurationNotifications": []
         }
       ],
       "results": [

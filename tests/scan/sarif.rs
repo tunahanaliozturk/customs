@@ -7,7 +7,7 @@ use std::fs;
 
 use crate::common::{TestResult, customs, fixtures, golden};
 
-fn schema() -> TestResult<jsonschema::Validator> {
+pub(crate) fn schema() -> TestResult<jsonschema::Validator> {
     let text = fs::read_to_string(fixtures().join("sarif").join("sarif-schema-2.1.0.json"))?;
     let schema: serde_json::Value = serde_json::from_str(&text)?;
     Ok(jsonschema::options()

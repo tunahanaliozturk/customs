@@ -92,12 +92,41 @@ struct Entry {
     note: String,
 }
 
-/// What a baseline file accepts: the fingerprints, and the reviewer's notes
-/// by fingerprint.
+/// What a baseline file accepts: the fingerprints, the reviewer's notes by
+/// fingerprint, and what each entry says it accepts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Baseline {
     pub(crate) accepted: BTreeSet<Fingerprint>,
     notes: BTreeMap<Fingerprint, String>,
+    labels: Vec<(Fingerprint, Label)>,
+}
+
+/// The rule, package and path of an entry. Only the fingerprint decides
+/// what an entry accepts; the label is for the reviewer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(crate) struct Label {
+    pub(crate) rule: String,
+    pub(crate) package: String,
+    pub(crate) path: Option<String>,
+}
+
+impl Label {
+    /// The same rule, package ignoring case, and path.
+    fn names(&self, other: &Self) -> bool {
+        self.rule == other.rule
+            && self.package.to_lowercase() == other.package.to_lowercase()
+            && self.path == other.path
+    }
+}
+
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.rule, self.package)?;
+        match &self.path {
+            Some(path) => write!(f, " {path}"),
+            None => Ok(()),
+        }
+    }
 }
 
 /// Reads a baseline file. The error says what is wrong with it.
@@ -123,6 +152,14 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Baseline, String> {
         if !entry.note.is_empty() {
             baseline.notes.insert(fingerprint, entry.note);
         }
+        baseline.labels.push((
+            fingerprint,
+            Label {
+                rule: entry.rule,
+                package: entry.package,
+                path: entry.path,
+            },
+        ));
     }
     Ok(baseline)
 }
@@ -131,33 +168,57 @@ pub(crate) fn parse(bytes: &[u8]) -> Result<Baseline, String> {
 /// fingerprint, sorted by package, rule and path, keeping the notes of
 /// `previous` for fingerprints it already had.
 pub(crate) fn write(scan: &Scan, previous: &Baseline) -> String {
-    let mut entries: BTreeMap<(String, &'static str, String, Fingerprint), Entry> = BTreeMap::new();
-    let mut add =
-        |fingerprint: Fingerprint, rule: &'static str, package: &str, path: Option<&str>| {
-            let key = (
-                package.to_lowercase(),
-                rule,
-                path.unwrap_or_default().to_owned(),
-                fingerprint,
-            );
-            entries.entry(key).or_insert_with(|| Entry {
+    // Two findings that differ only in their line, such as two identical
+    // `Exec` elements, have one fingerprint, so the baseline lists them once.
+    let mut entries: Vec<(Fingerprint, Label)> = labels(scan).into_iter().collect();
+    entries.sort_by(|(a, x), (b, y)| {
+        (x.package.to_lowercase(), &x.rule, &x.path, a).cmp(&(
+            y.package.to_lowercase(),
+            &y.rule,
+            &y.path,
+            b,
+        ))
+    });
+    let file = File {
+        schema: 1,
+        accepted: entries
+            .into_iter()
+            .map(|(fingerprint, label)| Entry {
                 fingerprint: fingerprint.to_string(),
-                rule: rule.to_owned(),
-                package: package.to_owned(),
-                path: path.map(str::to_owned),
+                rule: label.rule,
+                package: label.package,
+                path: label.path,
                 note: previous
                     .notes
                     .get(&fingerprint)
                     .cloned()
                     .unwrap_or_default(),
-            });
-        };
+            })
+            .collect(),
+    };
+    // Serialising plain strings and numbers cannot fail.
+    let mut text = serde_json::to_string_pretty(&file).unwrap_or_default();
+    text.push('\n');
+    text
+}
+
+/// The label of every finding and gap of `scan`, by fingerprint; the first
+/// one where several share a fingerprint.
+fn labels(scan: &Scan) -> BTreeMap<Fingerprint, Label> {
+    let mut labels = BTreeMap::new();
+    let mut add = |fingerprint, rule: &str, package: &str, path: Option<&String>| {
+        labels.entry(fingerprint).or_insert_with(|| Label {
+            rule: rule.to_owned(),
+            package: package.to_owned(),
+            path: path.cloned(),
+        });
+    };
     for (package, finding) in scan.findings() {
         add(
             finding.fingerprint(&package.id),
             finding.rule.id(),
             package.id.as_str(),
-            finding.path.as_deref(),
+            finding.path.as_ref(),
         );
     }
     for (owner, gap) in scan.gaps() {
@@ -165,19 +226,43 @@ pub(crate) fn write(scan: &Scan, previous: &Baseline) -> String {
             gap.fingerprint(owner),
             gap.rule.id(),
             owner.name(),
-            gap.path.as_deref(),
+            gap.path.as_ref(),
         );
     }
-    // Two findings that differ only in their line, such as two identical
-    // `Exec` elements, have one key, so the baseline lists them once.
-    let file = File {
-        schema: 1,
-        accepted: entries.into_values().collect(),
-    };
-    // Serialising plain strings and numbers cannot fail.
-    let mut text = serde_json::to_string_pretty(&file).unwrap_or_default();
-    text.push('\n');
-    text
+    labels
+}
+
+/// What a scan makes of the baseline's own entries: those that accept
+/// nothing in it, and those whose label is not what they accept. For the
+/// reviewer only; neither changes the exit code (ADR 0008).
+#[derive(Debug, Default)]
+pub(crate) struct Review<'a> {
+    pub(crate) unused: Vec<(Fingerprint, &'a Label)>,
+    /// The entry's fingerprint and label, and the label of what it accepts.
+    pub(crate) mislabelled: Vec<(Fingerprint, &'a Label, Label)>,
+}
+
+impl Review<'_> {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.unused.is_empty() && self.mislabelled.is_empty()
+    }
+}
+
+pub(crate) fn review(scan: &Scan) -> Review<'_> {
+    let current = labels(scan);
+    let mut review = Review::default();
+    for (fingerprint, label) in &scan.baseline.labels {
+        match current.get(fingerprint) {
+            None => review.unused.push((*fingerprint, label)),
+            Some(actual) if !label.names(actual) => {
+                review
+                    .mislabelled
+                    .push((*fingerprint, label, actual.clone()));
+            }
+            Some(_) => {}
+        }
+    }
+    review
 }
 
 #[cfg(test)]
