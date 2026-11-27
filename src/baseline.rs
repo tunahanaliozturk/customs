@@ -252,6 +252,24 @@ mod tests {
         }
     }
 
+    /// Known answers, computed apart from this code from the byte layout of
+    /// ADR 0008, with
+    /// `python -c "import hashlib; print(hashlib.sha256(b'\xff'.join([b'package', b'C203', b'contoso.a', b'build/a.targets', b'curl x y'])).hexdigest()[:32])"`
+    /// and the same for `[b'input', b'C001', b'packages', b'', b'not-found']`.
+    #[test]
+    fn a_fingerprint_matches_the_documented_layout() {
+        let finding = Fingerprint::new(
+            "package",
+            "C203",
+            "contoso.a",
+            Some("build/a.targets"),
+            Some("curl  x\n y"),
+        );
+        assert_eq!(finding.to_string(), "a0c2dd26229a8a41cc224150440e3daa");
+        let gap = Fingerprint::new("input", "C001", "packages", None, Some("not-found"));
+        assert_eq!(gap.to_string(), "8341d53f92773acefca7fd748d285b4f");
+    }
+
     #[test]
     fn only_32_lowercase_hex_digits_are_a_fingerprint() {
         for text in [
