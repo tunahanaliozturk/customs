@@ -478,7 +478,7 @@ Versions and licences checked on crates.io on 2026-11-22. M1 added `zip`, `serde
 | `lexopt` | 0.3.2 | MIT | Argument parsing for three commands. Small and without dependencies, unlike clap. Added at M1. |
 | `sha2` | 0.11.2 | MIT OR Apache-2.0 | SHA-256 fingerprints since M4, SHA-512 content hashes in M5. Without default features. Needs Rust 1.88. Brings `digest`, `block-buffer`, `crypto-common`, `hybrid-array`, `typenum` and `cpufeatures`, all MIT OR Apache-2.0. Added at M4. |
 | `unicode-security` | 0.1.3 | MIT/Apache-2.0 | UTS #39 confusable skeletons for C402 and C403. Brings `unicode-normalization` 0.1.26 ((MIT OR Apache-2.0) AND Unicode-3.0), `tinyvec` 1.13.3 (Zlib OR Apache-2.0 OR MIT) and `unicode-script` 0.5.9. Added at M4. |
-| `jsonschema` (dev) | 0.63.1 | MIT | Validates SARIF output against the SARIF 2.1.0 schema in a test. Without default features, so it never fetches a schema. Its tree adds one licence, MIT-0 (`borrow-or-share`), now in `deny.toml`. Added at M4. |
+| `jsonschema` (dev) | 0.63.1 | MIT | Validates SARIF output against the SARIF 2.1.0 schema in a test. Without default features, so it never fetches a schema. Its tree adds one licence, MIT-0 (`borrow-or-share`), allowed in `deny.toml` for that crate only since the M4 review. Added at M4. |
 | `ureq` | 3.5.2 | MIT OR Apache-2.0 | Blocking HTTPS for `diff` downloads, behind the `fetch` feature. No async runtime. |
 | `proptest` (dev) | | MIT OR Apache-2.0 | Property tests of the parsers. |
 | `tempfile` (dev) | 3.27.0 | MIT OR Apache-2.0 | Test directories with unpredictable names. Added at M1. |
