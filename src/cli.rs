@@ -16,6 +16,7 @@ use crate::graph::{self, GraphKind, PackageId, PackageRef, PackageVersion};
 use crate::inventory;
 use crate::locate;
 use crate::locate::{Listed, Location};
+use crate::names;
 use crate::package::{Limits, thousands};
 use crate::report;
 use crate::scan::{
@@ -356,6 +357,12 @@ fn scan(
         && let Some(root) = &options.packages_dir
     {
         scan_packages_dir(&mut scan, root, limits)?;
+    }
+    for package in &mut scan.packages {
+        let names = names::check(&package.id);
+        if !names.is_empty() {
+            package.outcome.findings.splice(0..0, names);
+        }
     }
     scan.packages
         .sort_by(|a, b| (a.id.lower(), a.version.lower()).cmp(&(b.id.lower(), b.version.lower())));

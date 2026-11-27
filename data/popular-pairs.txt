@@ -1,0 +1,333 @@
+# Pairs of popular IDs that resemble each other under rules C402 and C403,
+# reviewed by hand on 2026-11-25. customs never reports these, because a
+# popular ID gets no C402 or C403 itself; the self-test in src/names.rs fails
+# on a pair that is not listed here and on a listed pair it no longer finds.
+# Each line: two IDs and the reason, separated by " | ". "Both owned by" names
+# an owner that the nuget.org search API listed for both IDs on 2026-11-25;
+# the six pairs with no common owner were looked at one by one.
+Amazon.CDK.AWS.EC2 | Amazon.CDK.AWS.ECR | both owned by awsdotnet on nuget.org
+Amazon.CDK.AWS.SNS | Amazon.CDK.AWS.SQS | both owned by awsdotnet on nuget.org
+Amazon.Lambda.SNSEvents | Amazon.Lambda.SQSEvents | both owned by awsdotnet on nuget.org
+Antlr | Antlr4 | both owned by sharwell on nuget.org
+Antlr3.Runtime | Antlr4.Runtime | both owned by sharwell on nuget.org
+AWSSDK.EBS | AWSSDK.ECS | both owned by awsdotnet on nuget.org
+AWSSDK.EC2 | AWSSDK.ECR | both owned by awsdotnet on nuget.org
+AWSSDK.EC2 | AWSSDK.ECS | both owned by awsdotnet on nuget.org
+AWSSDK.ECR | AWSSDK.ECS | both owned by awsdotnet on nuget.org
+AWSSDK.Inspector | AWSSDK.Inspector2 | both owned by awsdotnet on nuget.org
+bunit.core | TUnit.Core | unrelated test frameworks, bUnit for Blazor components and TUnit, whose names differ in the first letter by choice
+bunit.core | xunit.core | unrelated test frameworks, bUnit for Blazor components and xUnit, whose names differ in the first letter by choice
+Crc32.NET | Crc32C.NET | different checksums, CRC-32 and CRC-32C, by different authors (force and robertvazan); both long established
+DH.Core | DH.NCore | both owned by qcjxberin on nuget.org
+DH.NCode | DH.NCore | both owned by qcjxberin on nuget.org
+Google.Cloud.Trace.V1 | Google.Cloud.Trace.V2 | both owned by google-cloud on nuget.org
+Humanizer.Core.af | Humanizer.Core.ar | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.af | Humanizer.Core.az | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.af | Humanizer.Core.fa | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ar | Humanizer.Core.az | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ar | Humanizer.Core.fr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ar | Humanizer.Core.hr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ar | Humanizer.Core.sr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ar | Humanizer.Core.tr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.bg | Humanizer.Core.bn | both owned by humanizer on nuget.org
+Humanizer.Core.bn | Humanizer.Core.nb | both owned by humanizer on nuget.org
+Humanizer.Core.ca | Humanizer.Core.cs | both owned by humanizer on nuget.org
+Humanizer.Core.ca | Humanizer.Core.da | both owned by humanizer on nuget.org
+Humanizer.Core.ca | Humanizer.Core.fa | both owned by humanizer on nuget.org
+Humanizer.Core.ca | Humanizer.Core.ja | both owned by humanizer on nuget.org
+Humanizer.Core.cs | Humanizer.Core.es | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.cs | Humanizer.Core.is | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.da | Humanizer.Core.de | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.da | Humanizer.Core.fa | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.da | Humanizer.Core.ja | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.de | Humanizer.Core.he | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.el | Humanizer.Core.es | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.el | Humanizer.Core.nl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.el | Humanizer.Core.pl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.el | Humanizer.Core.sl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.es | Humanizer.Core.is | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.fa | Humanizer.Core.fi | both owned by humanizer on nuget.org
+Humanizer.Core.fa | Humanizer.Core.fr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.fa | Humanizer.Core.ja | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.fi | Humanizer.Core.fil | both owned by humanizer on nuget.org
+Humanizer.Core.fi | Humanizer.Core.fr | both owned by humanizer on nuget.org
+Humanizer.Core.fi | Humanizer.Core.vi | both owned by humanizer on nuget.org
+Humanizer.Core.fr | Humanizer.Core.hr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.fr | Humanizer.Core.sr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.fr | Humanizer.Core.tr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.he | Humanizer.Core.hr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.he | Humanizer.Core.hu | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.he | Humanizer.Core.hy | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.hr | Humanizer.Core.hu | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.hr | Humanizer.Core.hy | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.hr | Humanizer.Core.sr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.hr | Humanizer.Core.tr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.hu | Humanizer.Core.hy | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.hu | Humanizer.Core.ku | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.hu | Humanizer.Core.ru | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.id | Humanizer.Core.is | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.id | Humanizer.Core.it | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.is | Humanizer.Core.it | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.it | Humanizer.Core.lt | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.it | Humanizer.Core.pt | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ko | Humanizer.Core.ku | both owned by humanizer on nuget.org
+Humanizer.Core.ko | Humanizer.Core.ro | both owned by humanizer on nuget.org
+Humanizer.Core.ku | Humanizer.Core.ru | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ku | Humanizer.Core.uk | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.lb | Humanizer.Core.lt | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.lb | Humanizer.Core.lv | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.lb | Humanizer.Core.nb | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.lt | Humanizer.Core.lv | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.lt | Humanizer.Core.pt | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.lv | Humanizer.Core.sv | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ms | Humanizer.Core.mt | both owned by humanizer on nuget.org
+Humanizer.Core.nb | Humanizer.Core.nl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.nl | Humanizer.Core.pl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.nl | Humanizer.Core.sl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.pl | Humanizer.Core.pt | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.pl | Humanizer.Core.sl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.ro | Humanizer.Core.ru | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sk | Humanizer.Core.sl | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sk | Humanizer.Core.sr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sk | Humanizer.Core.sv | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sk | Humanizer.Core.uk | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sl | Humanizer.Core.sr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sl | Humanizer.Core.sv | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sr | Humanizer.Core.sv | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.sr | Humanizer.Core.tr | both owned by dotnetfoundation, humanizer on nuget.org
+Humanizer.Core.th | Humanizer.Core.tr | both owned by humanizer on nuget.org
+Humanizer.Core.zh-Hans | Humanizer.Core.zh-Hant | both owned by dotnetfoundation, humanizer on nuget.org
+itext | itext7 | both owned by itext on nuget.org
+itext.bouncy-castle-adapter | itext7.bouncy-castle-adapter | both owned by itext on nuget.org
+itext.commons | itext7.commons | both owned by itext on nuget.org
+itext.pdfhtml | itext7.pdfhtml | both owned by itext on nuget.org
+JsonPatch.Net | JsonPath.Net | both owned by gregsdennis on nuget.org
+JunitXml.TestLogger | NunitXml.TestLogger | both owned by spekt on nuget.org
+JunitXml.TestLogger | XunitXml.TestLogger | both owned by codito, spekt on nuget.org
+Microsoft.AspNet.WebApi.Core | Microsoft.AspNet.WebApi.Cors | both owned by aspnet, microsoft on nuget.org
+Microsoft.AspNetCore.Mvc.Core | Microsoft.AspNetCore.Mvc.Cors | both owned by aspnet, dotnetframework, microsoft on nuget.org
+Microsoft.Data.Edm | Microsoft.OData.Edm | both owned by microsoft, odata on nuget.org
+Microsoft.Maui.Templates.net8 | Microsoft.Maui.Templates.net9 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.100 | Microsoft.NET.Sdk.Android.Manifest-6.0.200 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.100 | Microsoft.NET.Sdk.Android.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.100 | Microsoft.NET.Sdk.Android.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.100 | Microsoft.NET.Sdk.Android.Manifest-7.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.100 | Microsoft.NET.Sdk.Android.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.100 | Microsoft.NET.Sdk.Android.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.200 | Microsoft.NET.Sdk.Android.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.200 | Microsoft.NET.Sdk.Android.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-6.0.300 | Microsoft.NET.Sdk.Android.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-7.0.100 | Microsoft.NET.Sdk.Android.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-7.0.100 | Microsoft.NET.Sdk.Android.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.Android.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.Android.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-8.0.100 | Microsoft.NET.Sdk.Android.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Android.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Sdk.Android.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.100 | Microsoft.NET.Sdk.iOS.Manifest-6.0.200 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.100 | Microsoft.NET.Sdk.iOS.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.100 | Microsoft.NET.Sdk.iOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.100 | Microsoft.NET.Sdk.iOS.Manifest-7.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.100 | Microsoft.NET.Sdk.iOS.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.100 | Microsoft.NET.Sdk.iOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.200 | Microsoft.NET.Sdk.iOS.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.200 | Microsoft.NET.Sdk.iOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-6.0.300 | Microsoft.NET.Sdk.iOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-7.0.100 | Microsoft.NET.Sdk.iOS.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-7.0.100 | Microsoft.NET.Sdk.iOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.iOS.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.iOS.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-8.0.100 | Microsoft.NET.Sdk.iOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.iOS.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Sdk.iOS.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.200 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-7.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.200 | Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.200 | Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.300 | Microsoft.NET.Sdk.MacCatalyst.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-7.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-7.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.MacCatalyst.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.MacCatalyst.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-8.0.100 | Microsoft.NET.Sdk.MacCatalyst.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.MacCatalyst.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Sdk.MacCatalyst.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.100 | Microsoft.NET.Sdk.macOS.Manifest-6.0.200 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.100 | Microsoft.NET.Sdk.macOS.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.100 | Microsoft.NET.Sdk.macOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.100 | Microsoft.NET.Sdk.macOS.Manifest-7.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.100 | Microsoft.NET.Sdk.macOS.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.100 | Microsoft.NET.Sdk.macOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.200 | Microsoft.NET.Sdk.macOS.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.200 | Microsoft.NET.Sdk.macOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-6.0.300 | Microsoft.NET.Sdk.macOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-7.0.100 | Microsoft.NET.Sdk.macOS.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-7.0.100 | Microsoft.NET.Sdk.macOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.macOS.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.macOS.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-8.0.100 | Microsoft.NET.Sdk.macOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.macOS.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Sdk.macOS.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.100 | Microsoft.NET.Sdk.Maui.Manifest-6.0.200 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.100 | Microsoft.NET.Sdk.Maui.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.100 | Microsoft.NET.Sdk.Maui.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.100 | Microsoft.NET.Sdk.Maui.Manifest-7.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.100 | Microsoft.NET.Sdk.Maui.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.100 | Microsoft.NET.Sdk.Maui.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.200 | Microsoft.NET.Sdk.Maui.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.200 | Microsoft.NET.Sdk.Maui.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-6.0.300 | Microsoft.NET.Sdk.Maui.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-7.0.100 | Microsoft.NET.Sdk.Maui.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-7.0.100 | Microsoft.NET.Sdk.Maui.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.Maui.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.Maui.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-8.0.100 | Microsoft.NET.Sdk.Maui.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.Maui.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Sdk.Maui.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-6.0.200 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-7.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.200 | Microsoft.NET.Sdk.tvOS.Manifest-6.0.300 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.200 | Microsoft.NET.Sdk.tvOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-6.0.300 | Microsoft.NET.Sdk.tvOS.Manifest-6.0.400 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-7.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-8.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-7.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.tvOS.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Sdk.tvOS.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-8.0.100 | Microsoft.NET.Sdk.tvOS.Manifest-9.0.100 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Sdk.tvOS.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Sdk.tvOS.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Microsoft.NET.Workload.Emscripten.Current.Manifest-8.0.100 | Microsoft.NET.Workload.Emscripten.Current.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.Current.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.Current.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.Manifest-6.0.100 | Microsoft.NET.Workload.Emscripten.Manifest-6.0.200 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.Manifest-6.0.100 | Microsoft.NET.Workload.Emscripten.Manifest-6.0.300 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.Manifest-6.0.100 | Microsoft.NET.Workload.Emscripten.Manifest-6.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.Manifest-6.0.200 | Microsoft.NET.Workload.Emscripten.Manifest-6.0.300 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.Manifest-6.0.200 | Microsoft.NET.Workload.Emscripten.Manifest-6.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.Manifest-6.0.300 | Microsoft.NET.Workload.Emscripten.Manifest-6.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-10.0.100 | Microsoft.NET.Workload.Emscripten.net7.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-10.0.100 | Microsoft.NET.Workload.Emscripten.net8.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-10.0.100 | Microsoft.NET.Workload.Emscripten.net9.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-7.0.100 | Microsoft.NET.Workload.Emscripten.net6.Manifest-8.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-7.0.100 | Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-7.0.100 | Microsoft.NET.Workload.Emscripten.net7.Manifest-7.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net6.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net7.Manifest-7.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-8.0.100 | Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-8.0.100 | Microsoft.NET.Workload.Emscripten.net7.Manifest-8.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net7.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100 | Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100 | Microsoft.NET.Workload.Emscripten.net8.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net6.Manifest-9.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net8.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-10.0.100 | Microsoft.NET.Workload.Emscripten.net8.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-10.0.100 | Microsoft.NET.Workload.Emscripten.net9.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-7.0.100 | Microsoft.NET.Workload.Emscripten.net7.Manifest-8.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-7.0.100 | Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net7.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-8.0.100 | Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100 | Microsoft.NET.Workload.Emscripten.net8.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net7.Manifest-9.0.100.Msi.x64 | Microsoft.NET.Workload.Emscripten.net8.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Emscripten.net8.Manifest-10.0.100 | Microsoft.NET.Workload.Emscripten.net9.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Current.Manifest-8.0.100 | Microsoft.NET.Workload.Mono.ToolChain.Current.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Current.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.Current.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.100 | Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.200 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.100 | Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.300 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.100 | Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.200 | Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.300 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.200 | Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.300 | Microsoft.NET.Workload.Mono.ToolChain.Manifest-6.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.Toolchain.net6.Manifest-10.0.100 | Microsoft.NET.Workload.Mono.Toolchain.net7.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.Toolchain.net6.Manifest-10.0.100 | Microsoft.NET.Workload.Mono.Toolchain.net8.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.Toolchain.net6.Manifest-10.0.100 | Microsoft.NET.Workload.Mono.Toolchain.net9.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-7.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-8.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-7.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-7.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-7.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-7.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-8.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-8.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-8.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net8.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net6.Manifest-9.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net8.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.Toolchain.net7.Manifest-10.0.100 | Microsoft.NET.Workload.Mono.Toolchain.net8.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.Toolchain.net7.Manifest-10.0.100 | Microsoft.NET.Workload.Mono.Toolchain.net9.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-7.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-8.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-7.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-8.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-7.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-8.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-8.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100 | Microsoft.NET.Workload.Mono.ToolChain.net8.Manifest-9.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.ToolChain.net7.Manifest-9.0.100.Msi.x64 | Microsoft.NET.Workload.Mono.ToolChain.net8.Manifest-9.0.100.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workload.Mono.Toolchain.net8.Manifest-10.0.100 | Microsoft.NET.Workload.Mono.Toolchain.net9.Manifest-10.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.100 | Microsoft.NET.Workloads.10.0.200 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.100 | Microsoft.NET.Workloads.10.0.300 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.100 | Microsoft.NET.Workloads.10.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.100 | Microsoft.NET.Workloads.11.0.100 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.100.Msi.x64 | Microsoft.NET.Workloads.10.0.200.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.100.Msi.x64 | Microsoft.NET.Workloads.10.0.300.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.100.Msi.x64 | Microsoft.NET.Workloads.10.0.400.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.200 | Microsoft.NET.Workloads.10.0.300 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.200 | Microsoft.NET.Workloads.10.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.200.Msi.x64 | Microsoft.NET.Workloads.10.0.300.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.200.Msi.x64 | Microsoft.NET.Workloads.10.0.400.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.300 | Microsoft.NET.Workloads.10.0.400 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NET.Workloads.10.0.300.Msi.x64 | Microsoft.NET.Workloads.10.0.400.Msi.x64 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net40 | Microsoft.NETFramework.ReferenceAssemblies.net45 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net40 | Microsoft.NETFramework.ReferenceAssemblies.net46 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net40 | Microsoft.NETFramework.ReferenceAssemblies.net48 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net45 | Microsoft.NETFramework.ReferenceAssemblies.net46 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net45 | Microsoft.NETFramework.ReferenceAssemblies.net48 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net46 | Microsoft.NETFramework.ReferenceAssemblies.net461 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net46 | Microsoft.NETFramework.ReferenceAssemblies.net462 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net46 | Microsoft.NETFramework.ReferenceAssemblies.net48 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net461 | Microsoft.NETFramework.ReferenceAssemblies.net462 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net461 | Microsoft.NETFramework.ReferenceAssemblies.net481 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net462 | Microsoft.NETFramework.ReferenceAssemblies.net472 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.NETFramework.ReferenceAssemblies.net48 | Microsoft.NETFramework.ReferenceAssemblies.net481 | both owned by dotnetframework, microsoft on nuget.org
+Microsoft.VisualStudio.Shell.Interop.10.0 | Microsoft.VisualStudio.Shell.Interop.11.0 | both owned by microsoft, visualstudioextensibility on nuget.org
+Microsoft.VisualStudio.Shell.Interop.10.0 | Microsoft.VisualStudio.Shell.Interop.12.0 | both owned by microsoft, visualstudioextensibility on nuget.org
+Microsoft.VisualStudio.Shell.Interop.11.0 | Microsoft.VisualStudio.Shell.Interop.12.0 | both owned by microsoft, visualstudioextensibility on nuget.org
+Microsoft.VisualStudio.Shell.Interop.8.0 | Microsoft.VisualStudio.Shell.Interop.9.0 | both owned by microsoft, visualstudioextensibility on nuget.org
+Nethermind.Crypto.SecP256k1 | Nethermind.Crypto.SecP256r1 | both owned by nethermind on nuget.org
+NUnit.Analyzers | xunit.analyzers | the analyzers of two unrelated test frameworks, NUnit and xUnit
+NUnit.Engine | TUnit.Engine | the engines of two unrelated test frameworks, NUnit and TUnit
+NUnit3TestAdapter | NUnitTestAdapter | both owned by charliepoole, nunit, osiristerje, rprouse on nuget.org
+NunitXml.TestLogger | XunitXml.TestLogger | both owned by spekt on nuget.org
+PInvoke.BCrypt | PInvoke.NCrypt | both owned by aarnott, dotnetfoundation, pinvoke on nuget.org
+Reqnroll.NUnit | Reqnroll.xUnit | both owned by reqnroll on nuget.org
+runtime.debian.8-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.debian.9-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.fedora.23-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.fedora.24-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.fedora.23-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.fedora.27-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.fedora.23-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.fedora.28-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.fedora.24-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.fedora.27-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.fedora.24-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.fedora.28-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.fedora.27-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.fedora.28-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.opensuse.42.1-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.opensuse.42.3-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.ubuntu.14.04-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.ubuntu.18.04-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.ubuntu.16.04-x64.runtime.native.System.Security.Cryptography.OpenSsl | runtime.ubuntu.18.04-x64.runtime.native.System.Security.Cryptography.OpenSsl | both owned by dotnetframework, microsoft on nuget.org
+runtime.win-x64.runtime.native.System.Data.SqlClient.sni | runtime.win7-x64.runtime.native.System.Data.SqlClient.sni | both owned by dotnetframework, microsoft on nuget.org
+runtime.win-x86.runtime.native.System.Data.SqlClient.sni | runtime.win7-x86.runtime.native.System.Data.SqlClient.sni | both owned by dotnetframework, microsoft on nuget.org
+SpecFlow.NUnit | SpecFlow.xUnit | both owned by specflow on nuget.org
+TUnit.Core | xunit.core | the cores of two unrelated test frameworks, TUnit and xUnit
+Umbraco.Cms | UmbracoCms | both owned by umbraco on nuget.org
+Umbraco.Cms.Core | UmbracoCms.Core | both owned by umbraco on nuget.org
+Verify.NUnit | Verify.Xunit | both owned by simoncropp on nuget.org
+Xamarin.Android.Arch.Core.Common | Xamarin.AndroidX.Arch.Core.Common | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Xamarin.Android.Arch.Core.Runtime | Xamarin.AndroidX.Arch.Core.Runtime | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Xamarin.AndroidX.ViewPager | Xamarin.AndroidX.ViewPager2 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+Xamarin.Kotlin.StdLib.Jdk7 | Xamarin.Kotlin.StdLib.Jdk8 | both owned by dotnetframework, microsoft, xamarin on nuget.org
+xunit.v3.core.mtp-v1 | xunit.v3.core.mtp-v2 | both owned by xunit on nuget.org
+xunit.v3.mtp-v1 | xunit.v3.mtp-v2 | both owned by xunit on nuget.org
+Z.EntityFramework.Extensions.EF4 | Z.EntityFramework.Extensions.EF5 | both owned by zzzprojects on nuget.org

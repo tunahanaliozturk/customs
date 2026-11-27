@@ -189,6 +189,36 @@
               "defaultConfiguration": {
                 "level": "warning"
               }
+            },
+            {
+              "id": "C401",
+              "shortDescription": {
+                "text": "Package ID with characters outside ASCII."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "C402",
+              "shortDescription": {
+                "text": "Package ID that looks like a popular ID: the same skeleton under Unicode confusables."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "C403",
+              "shortDescription": {
+                "text": "Package ID one edit, or only separators, away from a popular ID, and not itself popular."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
             }
           ],
           "notifications": [

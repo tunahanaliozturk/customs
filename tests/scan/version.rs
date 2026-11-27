@@ -38,7 +38,8 @@ fn rules_lists_only_the_rules_this_build_implements() -> TestResult {
     assert_eq!(run.code, 0);
     for id in [
         "C001", "C002", "C003", "C004", "C101", "C102", "C103", "C104", "C105", "C201", "C202",
-        "C203", "C204", "C205", "C206", "C207", "C301", "C302", "C303", "C304",
+        "C203", "C204", "C205", "C206", "C207", "C301", "C302", "C303", "C304", "C401", "C402",
+        "C403",
     ] {
         assert!(
             run.stdout.contains(id),
@@ -46,9 +47,7 @@ fn rules_lists_only_the_rules_this_build_implements() -> TestResult {
             run.stdout
         );
     }
-    for id in ["C005", "C401", "C402", "C403"] {
-        assert!(!run.stdout.contains(id), "{id} listed but not built");
-    }
+    assert!(!run.stdout.contains("C005"), "C005 listed but not built");
     Ok(())
 }
 

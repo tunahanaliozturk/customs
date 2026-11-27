@@ -8,5 +8,6 @@ mod exit;
 mod golden;
 mod layout;
 mod msbuild;
+mod names;
 mod sarif;
 mod version;

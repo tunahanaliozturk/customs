@@ -1,0 +1,5 @@
+# Package IDs that a published campaign imitated and that are not among the
+# most downloaded (data/popular-ids.txt). C402 and C403 compare against them
+# as against a popular ID. Each line: the ID, " | ", and the source.
+# Added by hand; a line needs a public write-up that names the imitated ID.
+Guna.UI2.WinForms | ReversingLabs, 2024-07-11, "Malicious NuGet campaign uses homoglyphs and IL weaving to fool devs": the package Gսոa.UI3.Wіnfօrms, with Armenian and Cyrillic letters, passed as it. Guna.UI2.WinForms had 771,550 total downloads on 2026-11-25, far below the 6,484,229 of the 4,000th popular ID.

@@ -52,6 +52,7 @@ roxmltree = "0.21.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 sha2 = { version = "0.11.2", default-features = false }
+unicode-security = "0.1.3"
 zip = { version = "9.8.1", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]

@@ -51,6 +51,9 @@ pub(crate) enum FindingRule {
     C302,
     C303,
     C304,
+    C401,
+    C402,
+    C403,
 }
 
 impl FindingRule {
@@ -74,12 +77,15 @@ impl FindingRule {
             Self::C302 => "C302",
             Self::C303 => "C303",
             Self::C304 => "C304",
+            Self::C401 => "C401",
+            Self::C402 => "C402",
+            Self::C403 => "C403",
         }
     }
 
     pub(crate) fn severity(self) -> Severity {
         match self {
-            Self::C201 => Severity::Error,
+            Self::C201 | Self::C401 | Self::C402 => Severity::Error,
             Self::C003
             | Self::C004
             | Self::C203
@@ -88,7 +94,8 @@ impl FindingRule {
             | Self::C206
             | Self::C301
             | Self::C302
-            | Self::C304 => Severity::Warning,
+            | Self::C304
+            | Self::C403 => Severity::Warning,
             Self::C101
             | Self::C102
             | Self::C103
@@ -119,7 +126,7 @@ impl GapRule {
 
 /// One row of `customs rules`: ID, default severity (none for a gap), and
 /// one line.
-pub(crate) const RULES: [(&str, Option<Severity>, &str); 20] = [
+pub(crate) const RULES: [(&str, Option<Severity>, &str); 23] = [
     (
         "C001",
         None,
@@ -207,6 +214,21 @@ pub(crate) const RULES: [(&str, Option<Severity>, &str); 20] = [
         "C304",
         Some(Severity::Warning),
         "A .dll or .exe where NuGet expects managed code that is not a readable managed assembly. An error in an analyzer or build-time assembly.",
+    ),
+    (
+        "C401",
+        Some(Severity::Error),
+        "Package ID with characters outside ASCII.",
+    ),
+    (
+        "C402",
+        Some(Severity::Error),
+        "Package ID that looks like a popular ID: the same skeleton under Unicode confusables.",
+    ),
+    (
+        "C403",
+        Some(Severity::Warning),
+        "Package ID one edit, or only separators, away from a popular ID, and not itself popular.",
     ),
 ];
 
@@ -577,6 +599,9 @@ mod tests {
             FindingRule::C302,
             FindingRule::C303,
             FindingRule::C304,
+            FindingRule::C401,
+            FindingRule::C402,
+            FindingRule::C403,
         ];
         for rule in finding_rules {
             let row = RULES.iter().find(|r| r.0 == rule.id()).unwrap();

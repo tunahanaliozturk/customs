@@ -17,6 +17,7 @@ mod graph;
 mod inventory;
 mod locate;
 mod msbuild;
+mod names;
 mod package;
 mod report;
 mod scan;
