@@ -11,7 +11,8 @@ use serde_json::{Map, Value, json};
 use crate::baseline::{self, Fingerprint, Label, Review};
 use crate::inventory::Asset;
 use crate::scan::{
-    FailOn, Finding, Gap, InputKind, Origin, Owner, PackageScan, RULES, Scan, Severity, Verdict,
+    Cause, FailOn, Finding, Gap, InputKind, NOT_FOUND_IN, Origin, Owner, PackageScan, RULES, Scan,
+    Severity, Verdict,
 };
 
 const TOOL: &str = env!("CARGO_PKG_NAME");
@@ -548,9 +549,17 @@ fn sarif_notification(index: Option<usize>, owner: Owner<'_>, gap: &Gap, accepte
         ),
         Owner::Package(package) => (locations(package), Some(package)),
     };
+    // SARIF is meant for upload, so it does not name the folders searched
+    // for a missing package: they are paths of the machine that ran the scan.
+    let said = match gap.cause {
+        Cause::NotFound if gap.message.starts_with(NOT_FOUND_IN) => {
+            "not found in the package folders searched"
+        }
+        _ => &gap.message,
+    };
     let message = match package {
-        Some(p) => format!("{} {}: {}", p.id.as_str(), p.version.as_str(), gap.message),
-        None => gap.message.clone(),
+        Some(p) => format!("{} {}: {said}", p.id.as_str(), p.version.as_str()),
+        None => said.to_owned(),
     };
     json!({
         "level": if accepted { "note" } else { "error" },

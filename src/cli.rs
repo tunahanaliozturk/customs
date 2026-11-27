@@ -20,8 +20,8 @@ use crate::names;
 use crate::package::{Limits, thousands};
 use crate::report;
 use crate::scan::{
-    Cause, FailOn, Finding, Gap, Input, InputKind, Origin, Outcome, PackageScan, RULES, Scan,
-    Severity,
+    Cause, FailOn, Finding, Gap, Input, InputKind, NOT_FOUND_IN, Origin, Outcome, PackageScan,
+    RULES, Scan, Severity,
 };
 use crate::xml;
 
@@ -490,7 +490,7 @@ fn scan_graph_package(package: PackageRef, roots: &[PathBuf], limits: &Limits) -
             let message = if searched.is_empty() {
                 "not found: no package folder to look in; use --packages-dir".to_owned()
             } else {
-                format!("not found in {}", searched.join(", "))
+                format!("{NOT_FOUND_IN}{}", searched.join(", "))
             };
             found
                 .outcome

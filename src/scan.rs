@@ -294,6 +294,10 @@ impl Finding {
 const PACKAGE: &str = "package";
 const INPUT: &str = "input";
 
+/// How the message of a missing package starts when it names the folders
+/// searched, which SARIF leaves out.
+pub(crate) const NOT_FOUND_IN: &str = "not found in ";
+
 /// Why a gap exists: a fixed tag that goes into the gap's fingerprint, so
 /// that accepting one cause does not accept another (ADR 0008).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

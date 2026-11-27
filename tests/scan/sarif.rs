@@ -113,6 +113,36 @@ fn findings_the_baseline_accepts_are_left_out_and_counted() -> TestResult {
     Ok(())
 }
 
+/// SARIF is meant for upload, so a missing package's notification does not
+/// name the folders searched, which are paths of the machine that ran the
+/// scan; JSON still does (review of M4, finding 5).
+#[test]
+fn a_sarif_notification_does_not_name_the_folders_searched() -> TestResult {
+    let root = fixtures().join("packages");
+    let root = root.to_str().ok_or("path not UTF-8")?.replace('\\', "/");
+    let scan = [
+        "scan",
+        "missing/packages.lock.json",
+        "--packages-dir",
+        root.as_str(),
+    ];
+    let (code, text) = sarif(&scan)?;
+    assert_eq!(code, 3);
+    let report: serde_json::Value = serde_json::from_str(&text)?;
+    let notes = report["runs"][0]["invocations"][0]["toolExecutionNotifications"]
+        .as_array()
+        .ok_or("no notifications")?;
+    assert_ne!(notes.len(), 0);
+    for note in notes {
+        let message = note["message"]["text"].as_str().unwrap_or_default();
+        assert!(message.contains("not found"), "{message}");
+        assert!(!message.contains(&root), "{message}");
+    }
+    let json = customs(&fixtures(), &[&scan[..], &["--format", "json"]].concat())?;
+    assert!(json.stdout.contains(&root), "{}", json.stdout);
+    Ok(())
+}
+
 #[test]
 fn the_sarif_of_the_lock_file_fixture_matches_the_golden_file() -> TestResult {
     let (code, text) = sarif(&[
