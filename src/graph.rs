@@ -433,7 +433,7 @@ pub(crate) fn entry_lines(bytes: &[u8]) -> HashMap<(String, String), u32> {
     let mut at = 0;
     while let Some(&byte) = bytes.get(at) {
         match byte {
-            b'\n' => line = line.saturating_add(1),
+            b'\n' | b'\r' if ends_line(bytes, at) => line = line.saturating_add(1),
             b'{' | b'[' => {
                 depth += 1;
                 resolved_next = false;
@@ -444,7 +444,7 @@ pub(crate) fn entry_lines(bytes: &[u8]) -> HashMap<(String, String), u32> {
                 let token = bytes.get(at..=end).unwrap_or_default();
                 let mut next = end + 1;
                 while bytes.get(next).is_some_and(u8::is_ascii_whitespace) {
-                    if bytes.get(next) == Some(&b'\n') {
+                    if ends_line(bytes, next) {
                         line = line.saturating_add(1);
                     }
                     next += 1;
@@ -486,6 +486,16 @@ pub(crate) fn entry_lines(bytes: &[u8]) -> HashMap<(String, String), u32> {
         at += 1;
     }
     lines
+}
+
+/// Whether the byte at `at` ends a line: `\n`, or a `\r` not followed by
+/// `\n`, as in the MSBuild reader.
+fn ends_line(bytes: &[u8], at: usize) -> bool {
+    match bytes.get(at) {
+        Some(b'\n') => true,
+        Some(b'\r') => bytes.get(at + 1) != Some(&b'\n'),
+        _ => false,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -731,6 +741,16 @@ mod tests {
         assert_eq!(line_of(&lines, "b", "2.0.0"), Some(10));
         assert_eq!(line_of(&lines, "contoso.a", "1.5.0"), Some(13));
         assert_eq!(lines.len(), 3);
+    }
+
+    /// A lone CR ends a line, as it does for the MSBuild reader (review of
+    /// M4, finding 9).
+    #[test]
+    fn a_lone_cr_ends_a_line_in_a_graph_file() {
+        let lock = b"{\r  \"version\": 1,\r  \"dependencies\": {\r    \"net8.0\": {\r      \"A\": {\"type\": \"Direct\",\r        \"resolved\": \"1.0.0\"},\r\n      \"B\": {\"type\": \"Direct\", \"resolved\": \"2.0.0\"}\r    }\r  }\r}";
+        let lines = entry_lines(lock);
+        assert_eq!(line_of(&lines, "a", "1.0.0"), Some(5));
+        assert_eq!(line_of(&lines, "b", "2.0.0"), Some(7));
     }
 
     #[test]
