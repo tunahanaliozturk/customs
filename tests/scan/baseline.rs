@@ -380,6 +380,45 @@ fn a_baseline_entry_that_accepts_nothing_or_is_mislabelled_is_reported() -> Test
     Ok(())
 }
 
+/// The report is written before the baseline, so a report that cannot be
+/// written leaves no baseline behind, and the baseline is written through a
+/// temporary file that is renamed over it (review of M4, finding 8).
+#[test]
+fn a_baseline_is_written_after_the_report_and_whole() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    fs::create_dir_all(dir.path().join("packages"))?;
+    lock(dir.path(), "Contoso.Missing", "1.0.0")?;
+    let failed = scan(
+        dir.path(),
+        &[
+            "--write-baseline",
+            "b.json",
+            "--output",
+            "no-such-dir/r.txt",
+        ],
+    )?;
+    assert_eq!(failed.code, 2, "{}", failed.stderr);
+    assert!(!dir.path().join("b.json").exists());
+
+    fs::write(dir.path().join("b.json"), "old")?;
+    let written = scan(
+        dir.path(),
+        &["--write-baseline", "b.json", "--output", "r.txt"],
+    )?;
+    assert_eq!(written.code, 0, "{}", written.stderr);
+    assert!(fs::read_to_string(dir.path().join("b.json"))?.contains("\"schema\": 1"));
+    assert!(fs::read_to_string(dir.path().join("r.txt"))?.contains("accepted by the baseline"));
+    let names: Vec<String> = fs::read_dir(dir.path())?
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .collect();
+    assert_eq!(
+        names.len(),
+        4,
+        "only the lock file, the packages folder, b.json and r.txt: {names:?}"
+    );
+    Ok(())
+}
+
 /// Open question 16: C301 is an error for nine build-time assemblies of
 /// well-known packages in a local cache. A baseline settles it for a team
 /// that uses them: the first scan fails, the accepted finding stays quiet

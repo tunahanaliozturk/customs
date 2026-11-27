@@ -117,7 +117,7 @@ Since M1 the first line reads `customs 0.1.0: 214 packages from 1 input, all com
 
 `--write-baseline FILE` writes every current finding to a baseline file and exits 0. `--baseline FILE` hides findings whose fingerprint is in the file, and counts them.
 
-Since M4: `--write-baseline` writes every finding and every gap, and the report it prints shows them as the new file accepts them, so the scan exits 0 (2 if it could not run at all). With `--baseline` too, the reviewer's `note` of each fingerprint the old file had is kept. A gap that `--baseline` accepts is still listed, marked `(accepted by the baseline)`, and is still counted in the first line; neither an accepted finding nor an accepted gap counts for the exit code (ADR 0008).
+Since M4: `--write-baseline` writes every finding and every gap, and the report it prints shows them as the new file accepts them, so the scan exits 0 (2 if it could not run at all). With `--baseline` too, the reviewer's `note` of each fingerprint the old file had is kept. Since the M4 review the report is written first and the baseline after it, through a temporary file in the same folder that is renamed over the old one, so a report that cannot be written leaves the old baseline as it was, and the file is never half written (`a_baseline_is_written_after_the_report_and_whole`). A gap that `--baseline` accepts is still listed, marked `(accepted by the baseline)`, and is still counted in the first line; neither an accepted finding nor an accepted gap counts for the exit code (ADR 0008).
 
 `--verify-cache` also opens the `.nupkg` kept in each global packages folder entry, checks it against the hash in the lock or assets file, and reports any file whose extracted copy differs from the archive.
 

@@ -243,15 +243,15 @@ fn execute(command: Command, limits: &Limits) -> Result<u8, Usage> {
                 None => baseline::Baseline::default(),
             };
             let mut scan = scan(&options, default_root.as_deref(), limits)?;
-            scan.baseline = match &options.write_baseline {
-                // The report then shows what the new baseline accepts:
-                // everything, so the scan exits 0.
-                Some(path) => {
-                    let text = baseline::write(&scan, &previous);
-                    std::fs::write(path, &text)
-                        .map_err(|e| Usage(format!("could not write {}: {e}", display(path))))?;
-                    baseline::parse(text.as_bytes()).map_err(Usage)?
-                }
+            // The report then shows what the new baseline accepts:
+            // everything, so the scan exits 0. The file is written after the
+            // report, so a report that fails leaves no baseline behind.
+            let new_baseline = options
+                .write_baseline
+                .as_ref()
+                .map(|path| (path, baseline::write(&scan, &previous)));
+            scan.baseline = match &new_baseline {
+                Some((_, text)) => baseline::parse(text.as_bytes()).map_err(Usage)?,
                 None => previous,
             };
             let mut out: Box<dyn Write> = match &options.output {
@@ -269,6 +269,10 @@ fn execute(command: Command, limits: &Limits) -> Result<u8, Usage> {
             }
             .and_then(|()| out.flush())
             .map_err(failed)?;
+            if let Some((path, text)) = new_baseline {
+                write_whole(path, &text)
+                    .map_err(|e| Usage(format!("could not write {}: {e}", display(path))))?;
+            }
             Ok(scan.verdict(options.fail_on).code())
         }
     }
@@ -283,6 +287,21 @@ fn display(path: &Path) -> String {
     } else {
         text.into_owned()
     }
+}
+
+/// Writes `text` to a temporary file next to `path` and renames it over
+/// `path`, so that `path` holds the old content or the new, never a part.
+fn write_whole(path: &Path, text: &str) -> io::Result<()> {
+    let mut name = OsString::from(".");
+    name.push(path.file_name().unwrap_or_default());
+    name.push(".customs-tmp");
+    let temporary = path.with_file_name(name);
+    let result = std::fs::write(&temporary, text).and_then(|()| std::fs::rename(&temporary, path));
+    if result.is_err() {
+        // Nothing more can be done if the temporary file cannot be removed.
+        let _ = std::fs::remove_file(&temporary);
+    }
+    result
 }
 
 /// Reads a baseline file, at most as large as a graph file may be.
