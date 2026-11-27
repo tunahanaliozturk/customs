@@ -8,7 +8,7 @@ At a border, customs officers open the crates and list what is inside before any
 
 ## Status
 
-Milestones M1 to M3 of seven are done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder. It lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code, and it reads every `.props`, `.targets` and `.tasks` file of every package, and any file an import reaches from them, for inline tasks, `Exec`, `DownloadFile`, URLs and long base64 strings, at file and line, following literal imports from the entry points. It reads every managed assembly with a metadata reader of its own and reports module initialisers, P/Invokes that change memory protection or write to another process, a known obfuscator marker, and `.dll` files that are not readable managed code; in an analyzer or a build-time assembly each of these is one step more severe. It says so, with exit code 3, when it could not look at everything. It does not check package IDs (M4), and it has no baseline (M4) and no `diff` (M5).
+Milestones M1 to M4 of seven are done, and nothing is released. `customs scan` reads a lock file, an assets file, a `.nupkg` or a global packages folder. It lists which packages bring MSBuild build assets, analyzers, PowerShell scripts, native binaries and `contentFiles` source code, and it reads every `.props`, `.targets` and `.tasks` file of every package, and any file an import reaches from them, for inline tasks, `Exec`, `DownloadFile`, URLs and long base64 strings, at file and line, following literal imports from the entry points. It reads every managed assembly with a metadata reader of its own and reports module initialisers, P/Invokes that change memory protection or write to another process, a known obfuscator marker, and `.dll` files that are not readable managed code; in an analyzer or a build-time assembly each of these is one step more severe. It reports package IDs with letters outside ASCII, IDs that look like a popular ID under Unicode's confusable characters, and IDs one edit away from one. It says so, with exit code 3, when it could not look at everything. A baseline file accepts what a team has reviewed, and the report can be SARIF 2.1.0 (whether GitHub code scanning accepts it is checked by CI after the next push). It has no `diff` yet (M5).
 
 ## Try it
 
@@ -42,6 +42,15 @@ exit 1: findings at or above --fail-on warning
 
 The `Exec` sits in `build/tasks/Fetch.targets`, which the package's entry point `build/Contoso.Build.Tools.targets` imports. Add `--format json` for every file of every package, by kind, and every finding with its line and evidence. On your own project, run `dotnet restore` first, then point customs at the project folder, its `packages.lock.json` or its `obj/project.assets.json`. `customs rules` lists the rules and `customs --help` the options.
 
+To accept what you have reviewed and see only what changes after that:
+
+```
+customs scan packages.lock.json --write-baseline customs-baseline.json
+customs scan packages.lock.json --baseline customs-baseline.json --format sarif --output customs.sarif
+```
+
+The first command exits 0 and writes every finding with a fingerprint that leaves out the version and the line, so the next release of a package keeps its findings accepted unless what they report changed; a changed `Exec` command is reported again on its own (`a_baseline_accepts_a_scan_until_an_exec_command_changes` in `tests/scan/baseline.rs`). The SARIF report places each finding at the line of its package in the lock file, and a test validates it against the SARIF 2.1.0 schema (`tests/scan/sarif.rs`).
+
 ## What a normal project sees
 
 The benign corpus is the 300 most downloaded packages on nuget.org, pinned in [corpus/benign.txt](corpus/benign.txt) on 2026-11-22. Packages with at least one warning, by rule:
@@ -51,7 +60,7 @@ The benign corpus is the 300 most downloaded packages on nuget.org, pinned in [c
 | C203 `Exec` task | 2 |
 | C205 URL | 1 |
 | C302 P/Invoke to a memory or process function | 1 |
-| C201, C204, C206, C004, C003, C301, C304 | 0 |
+| C201, C204, C206, C004, C003, C301, C304, C401, C402, C403 | 0 |
 
 No package in the corpus produces an error. Every warning is explained in [corpus/benign-expected.txt](corpus/benign-expected.txt). To reproduce the numbers:
 
