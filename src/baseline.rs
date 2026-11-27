@@ -40,10 +40,13 @@ impl Fingerprint {
             }
             hash.update(part.as_bytes());
         }
-        let digest = hash.finalize();
-        let mut bytes = [0; 16];
-        bytes.copy_from_slice(digest.get(..16).unwrap_or_default());
-        Self(bytes)
+        // A SHA-256 digest always has 32 bytes, so the default is never used.
+        Self(
+            hash.finalize()
+                .first_chunk::<16>()
+                .copied()
+                .unwrap_or_default(),
+        )
     }
 
     /// Reads 32 lowercase hexadecimal digits.
