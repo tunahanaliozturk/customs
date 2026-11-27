@@ -795,9 +795,8 @@ mod tests {
 
     #[test]
     fn entry_lines_take_linear_time() {
-        // Many entries, each with a resolved value, and one string of a
-        // megabyte with escapes: twice the input must not take much more
-        // than twice the time.
+        // Many entries, each with a resolved value, and one string with as
+        // many escapes as there are entries.
         let input = |n: usize| {
             let mut text = String::from(r#"{"version": 1, "dependencies": {"net8.0": {"#);
             for i in 0..n {
@@ -812,16 +811,27 @@ mod tests {
             text += r#""}}}}"#;
             text.into_bytes()
         };
-        let time = |bytes: &[u8]| {
-            let start = std::time::Instant::now();
-            let lines = entry_lines(bytes);
-            (start.elapsed(), lines.len())
+        // Why this does not flake: each size is timed three times and the
+        // fastest run counts, so one run slowed by other tests or the
+        // scheduler does not decide it. Eight times the input takes about
+        // eight times as long when the walk is linear and 64 times when it
+        // is quadratic; the bound of 24 times, plus 50 ms for a small run
+        // too short to time well, sits far from both.
+        let best = |bytes: &[u8]| {
+            (0..3)
+                .map(|_| {
+                    let start = std::time::Instant::now();
+                    let _ = entry_lines(bytes);
+                    start.elapsed()
+                })
+                .min()
+                .unwrap()
         };
-        let (small, found) = time(&input(50_000));
-        assert_eq!(found, 50_000);
-        let (large, _) = time(&input(100_000));
+        let (small, large) = (input(10_000), input(80_000));
+        assert_eq!(entry_lines(&large).len(), 80_000);
+        let (small, large) = (best(&small), best(&large));
         assert!(
-            large < small * 4 + std::time::Duration::from_millis(200),
+            large < small * 24 + std::time::Duration::from_millis(50),
             "{small:?} then {large:?}"
         );
     }
