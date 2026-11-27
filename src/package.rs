@@ -2,7 +2,7 @@
 //! entries and a capped read of one entry. Also the limits and the budget
 //! that every listing and every read goes through.
 
-use crate::scan::{Gap, GapRule, Outcome};
+use crate::scan::{Cause, Gap, Outcome};
 
 /// Every cap of the design that the code can reach, in one value passed down
 /// explicitly. Tests use small values to reach them cheaply.
@@ -79,7 +79,7 @@ impl Budget {
     pub(crate) fn take_entry(&mut self, limits: &Limits) -> Result<(), Gap> {
         if self.entries >= limits.entries {
             return Err(Gap::new(
-                GapRule::C002,
+                Cause::Limit("entries"),
                 None,
                 format!(
                     "limit reached: more than {} entries in one package; the rest is not listed",
@@ -100,7 +100,7 @@ impl Budget {
     ) -> Result<(), Gap> {
         if self.bytes.saturating_add(cap) > limits.package_bytes {
             return Err(Gap::new(
-                GapRule::C002,
+                Cause::Limit("package-bytes"),
                 Some(path.as_str().to_owned()),
                 format!(
                     "limit reached: {} bytes read from one package; this entry is not read",
@@ -125,8 +125,8 @@ pub(crate) struct PackagePath(String);
 pub(crate) enum PathProblem {
     /// The name leaves the package or is not a plain relative path: C003.
     Unsafe(&'static str),
-    /// The name is over a path limit: a C002 gap.
-    Limit(String),
+    /// The name is over a path limit, named by its tag: a C002 gap.
+    Limit(&'static str, String),
 }
 
 impl PackagePath {
@@ -153,18 +153,24 @@ impl PackagePath {
             return Err(PathProblem::Unsafe("names no file"));
         }
         if name.len() > limits.path_bytes {
-            return Err(PathProblem::Limit(format!(
-                "limit reached: a path of {} bytes, over the limit of {}",
-                thousands(name.len() as u64),
-                thousands(limits.path_bytes as u64)
-            )));
+            return Err(PathProblem::Limit(
+                "path-bytes",
+                format!(
+                    "limit reached: a path of {} bytes, over the limit of {}",
+                    thousands(name.len() as u64),
+                    thousands(limits.path_bytes as u64)
+                ),
+            ));
         }
         let segments = name.split('/').count();
         if segments > limits.path_segments {
-            return Err(PathProblem::Limit(format!(
-                "limit reached: a path of {segments} segments, over the limit of {}",
-                limits.path_segments
-            )));
+            return Err(PathProblem::Limit(
+                "path-segments",
+                format!(
+                    "limit reached: a path of {segments} segments, over the limit of {}",
+                    limits.path_segments
+                ),
+            ));
         }
         Ok(Self(name))
     }
@@ -268,12 +274,12 @@ mod tests {
         assert!(PackagePath::new("abcdefghij", &limits).is_ok());
         assert!(matches!(
             PackagePath::new("abcdefghijk", &limits),
-            Err(PathProblem::Limit(_))
+            Err(PathProblem::Limit(..))
         ));
         assert!(PackagePath::new("a/b/c", &limits).is_ok());
         assert!(matches!(
             PackagePath::new("a/b/c/d", &limits),
-            Err(PathProblem::Limit(_))
+            Err(PathProblem::Limit(..))
         ));
     }
 

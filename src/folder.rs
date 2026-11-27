@@ -6,7 +6,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use crate::package::{Budget, Entry, Files, Limits, PackagePath, PathProblem, shorten};
-use crate::scan::{Finding, FindingRule, Gap, GapRule, Outcome};
+use crate::scan::{Cause, Finding, FindingRule, Gap, Outcome};
 
 #[derive(Debug)]
 pub(crate) struct Folder {
@@ -52,7 +52,7 @@ impl Folder {
             Ok(kind) => kind,
             Err(e) => {
                 outcome.gaps.push(Gap::new(
-                    GapRule::C001,
+                    Cause::Unreadable,
                     Some(name),
                     format!("could not read: {e}"),
                 ));
@@ -68,7 +68,7 @@ impl Folder {
         } else if kind.is_dir() {
             if name.split('/').count() >= limits.path_segments {
                 outcome.gaps.push(Gap::new(
-                    GapRule::C002,
+                    Cause::Limit("path-segments"),
                     Some(shorten(&name)),
                     format!(
                         "limit reached: a folder at depth {}, the limit for a path; not listed",
@@ -94,10 +94,10 @@ impl Folder {
                     Some(name.clone()),
                     format!("a file name that {reason}: {name}"),
                 )),
-                Err(PathProblem::Limit(message)) => {
+                Err(PathProblem::Limit(limit, message)) => {
                     outcome
                         .gaps
-                        .push(Gap::new(GapRule::C002, Some(shorten(&name)), message));
+                        .push(Gap::new(Cause::Limit(limit), Some(shorten(&name)), message));
                 }
             }
         } else {
@@ -125,7 +125,7 @@ impl Files for Folder {
             }
             let unlisted = |e: std::io::Error| {
                 Gap::new(
-                    GapRule::C001,
+                    Cause::Unreadable,
                     (!prefix.is_empty()).then(|| prefix.clone()),
                     format!("could not list the folder: {e}"),
                 )
@@ -167,7 +167,7 @@ impl Files for Folder {
     ) -> Result<Vec<u8>, Gap> {
         let unreadable = |e: std::io::Error| {
             Gap::new(
-                GapRule::C001,
+                Cause::Unreadable,
                 Some(entry.path.as_str().to_owned()),
                 format!("could not read the file: {e}"),
             )
@@ -191,6 +191,7 @@ impl Files for Folder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scan::GapRule;
 
     #[test]
     fn listing_is_deterministic_and_stops_one_entry_over_the_limit() {

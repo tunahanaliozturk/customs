@@ -205,7 +205,7 @@
       "line": null,
       "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)",
       "evidence": null,
-      "fingerprint": "5ca79becda769fa2f13a0e12cbc8665a",
+      "fingerprint": "555a7a5923c80b0caceb3ecd52874e41",
       "accepted": false
     },
     {
@@ -217,7 +217,7 @@
       "line": null,
       "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)",
       "evidence": null,
-      "fingerprint": "7548330102b30c6e886244d6b263a706",
+      "fingerprint": "e4aff8a38c9b8e2e7c16f0e004ed46c7",
       "accepted": false
     },
     {
@@ -229,7 +229,7 @@
       "line": 4,
       "message": "Exec task",
       "evidence": "echo fixture, would fetch https://example.invalid/tool",
-      "fingerprint": "1b44ae77300da478198ecb9a3a936289",
+      "fingerprint": "3a67b8159b9dce01b14b50a5346cbbc4",
       "accepted": false
     },
     {
@@ -241,7 +241,7 @@
       "line": 4,
       "message": "URL",
       "evidence": "https://example.invalid/tool",
-      "fingerprint": "18a37d030965a8b1748ae3671b4727c6",
+      "fingerprint": "61af33cf3ef234330fbe28058265872b",
       "accepted": false
     },
     {
@@ -253,7 +253,7 @@
       "line": null,
       "message": "build assets: BUILD/Contoso.Shouting.targets",
       "evidence": null,
-      "fingerprint": "1adfb0123186b750db55dc70f9486d12",
+      "fingerprint": "7c5b86a4fea816757b55d5d78d8da706",
       "accepted": false
     },
     {
@@ -265,7 +265,7 @@
       "line": null,
       "message": "contentFiles source: contentFiles/cs/any/Helpers.cs",
       "evidence": null,
-      "fingerprint": "53af604ec9a20c93e4cdc14863e60390",
+      "fingerprint": "6d6ba2dd6b0d6a0c97900ceaf45b3839",
       "accepted": false
     },
     {
@@ -277,7 +277,7 @@
       "line": null,
       "message": "PowerShell script: tools/init.ps1 (+1 more file)",
       "evidence": null,
-      "fingerprint": "a9ea6d28855e36df9ab65c78c7157010",
+      "fingerprint": "2b06dcd63ae0751d23e4e058ee5d12ab",
       "accepted": false
     },
     {
@@ -289,7 +289,7 @@
       "line": null,
       "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)",
       "evidence": null,
-      "fingerprint": "6a6715a792d9b7a3ac3ea29dc737f3eb",
+      "fingerprint": "501700808a305cf25fbe47f81cb1f92c",
       "accepted": false
     }
   ],

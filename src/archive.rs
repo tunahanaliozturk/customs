@@ -8,7 +8,7 @@ use std::path::Path;
 use zip::ZipArchive;
 
 use crate::package::{Budget, Entry, Files, Limits, PackagePath, PathProblem, shorten, thousands};
-use crate::scan::{Finding, FindingRule, Gap, GapRule, Outcome};
+use crate::scan::{Cause, Finding, FindingRule, Gap, Outcome};
 
 pub(crate) struct Archive {
     zip: ZipArchive<BufReader<File>>,
@@ -25,12 +25,12 @@ impl std::fmt::Debug for Archive {
 /// Opens an archive. Problems with the archive as a whole go into `outcome`
 /// and return `None`.
 pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Option<Archive> {
-    let gap = |rule, message: String| Gap::new(rule, None, message);
+    let gap = |cause, message: String| Gap::new(cause, None, message);
     let mut file = match File::open(path) {
         Ok(file) => file,
         Err(e) => {
             outcome.gaps.push(gap(
-                GapRule::C001,
+                Cause::Unreadable,
                 format!("could not open the archive: {e}"),
             ));
             return None;
@@ -40,7 +40,7 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
         Ok(metadata) => metadata.len(),
         Err(e) => {
             outcome.gaps.push(gap(
-                GapRule::C001,
+                Cause::Unreadable,
                 format!("could not read the archive: {e}"),
             ));
             return None;
@@ -48,7 +48,7 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
     };
     if length > limits.nupkg_bytes {
         outcome.gaps.push(gap(
-            GapRule::C002,
+            Cause::Limit("nupkg-bytes"),
             format!(
                 "limit reached: the archive is {} bytes, over the limit of {} for one .nupkg; not read",
                 thousands(length),
@@ -65,7 +65,7 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
         Ok(Err(refusal)) => Some(refusal),
         Err(e) => {
             outcome.gaps.push(gap(
-                GapRule::C001,
+                Cause::Unreadable,
                 format!("could not read the archive: {e}"),
             ));
             return None;
@@ -77,7 +77,7 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
     }
     if let Err(e) = file.seek(SeekFrom::Start(0)) {
         outcome.gaps.push(gap(
-            GapRule::C001,
+            Cause::Unreadable,
             format!("could not read the archive: {e}"),
         ));
         return None;
@@ -86,16 +86,15 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
         Ok(zip) => zip,
         Err(e) => {
             outcome.gaps.push(gap(
-                GapRule::C001,
+                Cause::Unreadable,
                 format!("could not read the archive: {e}"),
             ));
             return None;
         }
     };
     if zip.has_duplicate_names() {
-        outcome.findings.push(Finding::new(
-            FindingRule::C003,
-            None,
+        outcome.findings.push(Finding::whole_package(
+            "duplicate-names",
             "two entries have the same name; customs lists only one of them".to_owned(),
         ));
     }
@@ -104,25 +103,24 @@ pub(crate) fn open(path: &Path, limits: &Limits, outcome: &mut Outcome) -> Optio
 
 /// Records why an archive was not opened.
 fn refuse(refusal: Refusal, limits: &Limits, outcome: &mut Outcome) {
-    let gap = |rule, message: String| Gap::new(rule, None, message);
+    let gap = |cause, message: String| Gap::new(cause, None, message);
     match refusal {
         Refusal::NotZip => outcome.gaps.push(gap(
-            GapRule::C001,
+            Cause::NotZip,
             "not a zip archive: no end of central directory record".to_owned(),
         )),
         Refusal::Layout(reason) => {
-            outcome.findings.push(Finding::new(
-                FindingRule::C003,
-                None,
+            outcome.findings.push(Finding::whole_package(
+                "layout",
                 format!("an archive layout that zip readers read differently; not opened: {reason}"),
             ));
             outcome.gaps.push(gap(
-                GapRule::C001,
+                Cause::Layout,
                 "not read, because of its archive layout (see C003)".to_owned(),
             ));
         }
         Refusal::Entries(count) => outcome.gaps.push(gap(
-            GapRule::C002,
+            Cause::Limit("entries"),
             format!(
                 "limit reached: the archive declares {} entries, over the limit of {} for one package; not read",
                 thousands(count),
@@ -130,7 +128,7 @@ fn refuse(refusal: Refusal, limits: &Limits, outcome: &mut Outcome) {
             ),
         )),
         Refusal::Directory(size) => outcome.gaps.push(gap(
-            GapRule::C002,
+            Cause::Limit("directory-bytes"),
             format!(
                 "limit reached: a central directory of {} bytes, over the limit of {}; not read",
                 thousands(size),
@@ -373,7 +371,7 @@ impl Archive {
         match self.read(&entry, cap, limits, budget) {
             Err(gap) => Nuspec::Unread(gap),
             Ok(bytes) if bytes.len() as u64 > limits.text_bytes => Nuspec::Unread(Gap::new(
-                GapRule::C002,
+                Cause::Limit("text-bytes"),
                 Some(entry.path.as_str().to_owned()),
                 format!(
                     "limit reached: a nuspec over {} bytes; not read, so the package is named from its file name",
@@ -393,7 +391,7 @@ impl Files for Archive {
                 Ok(data) => data,
                 Err(e) => {
                     outcome.gaps.push(Gap::new(
-                        GapRule::C001,
+                        Cause::Unreadable,
                         None,
                         format!("could not list entry {key}: {e}"),
                     ));
@@ -419,10 +417,12 @@ impl Files for Archive {
                         Some(name.clone()),
                         format!("an entry name that {reason}: {name}"),
                     )),
-                    Err(PathProblem::Limit(message)) => {
-                        outcome
-                            .gaps
-                            .push(Gap::new(GapRule::C002, Some(shorten(&name)), message));
+                    Err(PathProblem::Limit(limit, message)) => {
+                        outcome.gaps.push(Gap::new(
+                            Cause::Limit(limit),
+                            Some(shorten(&name)),
+                            message,
+                        ));
                     }
                 },
                 Err(reason) => {
@@ -448,7 +448,7 @@ impl Files for Archive {
         let path = entry.path.as_str();
         let unreadable = |e: &dyn std::fmt::Display| {
             Gap::new(
-                GapRule::C001,
+                Cause::Unreadable,
                 Some(path.to_owned()),
                 format!("could not read the entry: {e}"),
             )
@@ -463,7 +463,7 @@ impl Files for Archive {
         let by_ratio = compressed.saturating_mul(limits.ratio);
         let ratio_gap = |size: u64| {
             Gap::new(
-                GapRule::C002,
+                Cause::Limit("ratio"),
                 Some(path.to_owned()),
                 format!(
                     "limit reached: decompression ratio over {} to 1 ({} bytes from {} compressed); not read",
@@ -506,6 +506,7 @@ mod tests {
     use zip::write::{SimpleFileOptions, ZipWriter};
 
     use super::*;
+    use crate::scan::GapRule;
 
     fn archive(entries: &[(&str, &[u8])]) -> tempfile::NamedTempFile {
         let mut writer = ZipWriter::new(Cursor::new(Vec::new()));

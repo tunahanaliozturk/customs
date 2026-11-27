@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::common::{TestResult, assembly, customs};
+use crate::common::{TestResult, assembly, customs, zip};
 
 /// Writes one extracted package into `root`, as restore leaves it.
 fn package(root: &Path, id: &str, version: &str, files: &[(&str, &[u8])]) -> TestResult {
@@ -261,6 +261,50 @@ fn a_baseline_that_is_not_one_is_a_usage_error() -> TestResult {
         assert!(run.stdout.is_empty(), "{name}");
     }
     assert_eq!(scan(dir.path(), &["--baseline", "absent.json"])?.code, 2);
+    Ok(())
+}
+
+/// The finding or gap of one rule in a JSON report, and whether it is accepted.
+fn accepted(report: &serde_json::Value, list: &str, rule: &str) -> Vec<bool> {
+    report[list]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|f| f["rule"] == rule)
+        .map(|f| f["accepted"] == true)
+        .collect()
+}
+
+/// A gap or a C003 with no path is told apart by its cause: accepting a
+/// package that is not a zip archive does not accept, at a later release, an
+/// archive that zip readers read differently, and accepting two root
+/// nuspecs does not accept that either (review of M4, finding 1).
+#[test]
+fn accepting_one_cause_of_an_unread_package_does_not_accept_another() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    let name = "Contoso.A.1.0.0.nupkg";
+    let run = |more: &[&str]| {
+        let mut args = vec!["scan", name, "--format", "json"];
+        args.extend(more);
+        customs(dir.path(), &args)
+    };
+    let mut layout = vec![b'J'; 64];
+    layout.extend(zip(&[("lib/a.txt", b"x")])?);
+
+    fs::write(dir.path().join(name), b"not a zip")?;
+    assert_eq!(run(&["--write-baseline", "gap.json"])?.code, 0);
+    fs::write(dir.path().join(name), &layout)?;
+    let report = run(&["--baseline", "gap.json"])?.json()?;
+    assert_eq!(accepted(&report, "incomplete", "C001"), [false], "{report}");
+
+    fs::write(
+        dir.path().join(name),
+        zip(&[("a.nuspec", b"<a/>"), ("b.nuspec", b"<b/>")])?,
+    )?;
+    assert_eq!(run(&["--write-baseline", "c003.json"])?.code, 0);
+    fs::write(dir.path().join(name), &layout)?;
+    let report = run(&["--baseline", "c003.json"])?.json()?;
+    assert_eq!(accepted(&report, "findings", "C003"), [false], "{report}");
     Ok(())
 }
 

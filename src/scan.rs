@@ -258,6 +258,15 @@ impl Finding {
         }
     }
 
+    /// A C003 about the whole package, with no path. Its evidence is a fixed
+    /// tag of what it is, so that accepting one does not accept another
+    /// (ADR 0008).
+    pub(crate) fn whole_package(tag: &'static str, message: String) -> Self {
+        let mut finding = Self::new(FindingRule::C003, None, message);
+        finding.evidence = Some(tag.to_owned());
+        finding
+    }
+
     /// Raises the severity one step, for code that runs in the compiler or
     /// in `MSBuild` on every build.
     pub(crate) fn raised(mut self) -> Self {
@@ -272,6 +281,7 @@ impl Finding {
     /// evidence; not the version, the line or the message.
     pub(crate) fn fingerprint(&self, id: &PackageId) -> Fingerprint {
         Fingerprint::new(
+            PACKAGE,
             self.rule.id(),
             id.lower(),
             self.path.as_deref(),
@@ -280,26 +290,86 @@ impl Finding {
     }
 }
 
+/// The owner kinds a fingerprint names (ADR 0008).
+const PACKAGE: &str = "package";
+const INPUT: &str = "input";
+
+/// Why a gap exists: a fixed tag that goes into the gap's fingerprint, so
+/// that accepting one cause does not accept another (ADR 0008).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Cause {
+    /// C001: the package is in no folder searched.
+    NotFound,
+    /// C001: the package folder, or an ID folder, is a link.
+    Link,
+    /// C001: an archive layout that zip readers read differently (C003).
+    Layout,
+    /// C001: no end of central directory record.
+    NotZip,
+    /// C001: the system or the zip crate failed to read a file, a folder or
+    /// an entry.
+    Unreadable,
+    /// C001: a package folder without `.nupkg.metadata`.
+    Incomplete,
+    /// C001: a folder under `--packages-dir` whose names are not an ID and a
+    /// version.
+    NotPackage,
+    /// C002: the limit that stopped reading, by its tag in ADR 0008.
+    Limit(&'static str),
+}
+
+impl Cause {
+    pub(crate) fn tag(self) -> &'static str {
+        match self {
+            Self::NotFound => "not-found",
+            Self::Link => "link",
+            Self::Layout => "layout",
+            Self::NotZip => "not-zip",
+            Self::Unreadable => "unreadable",
+            Self::Incomplete => "incomplete",
+            Self::NotPackage => "not-a-package",
+            Self::Limit(limit) => limit,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Gap {
     pub(crate) rule: GapRule,
     pub(crate) path: Option<String>,
     pub(crate) message: String,
+    pub(crate) cause: Cause,
 }
 
 impl Gap {
-    pub(crate) fn new(rule: GapRule, path: Option<String>, message: String) -> Self {
+    /// A gap of rule C002 for a limit, C001 for any other cause.
+    pub(crate) fn new(cause: Cause, path: Option<String>, message: String) -> Self {
         Self {
-            rule,
+            rule: match cause {
+                Cause::Limit(_) => GapRule::C002,
+                _ => GapRule::C001,
+            },
             path,
             message,
+            cause,
         }
     }
 
-    /// The fingerprint of a gap: rule, owner and path. The message is left
-    /// out, because it names folders of the machine that ran the scan.
-    pub(crate) fn fingerprint(&self, owner: &str) -> Fingerprint {
-        Fingerprint::new(self.rule.id(), owner, self.path.as_deref(), None)
+    /// The fingerprint of a gap: the owner's kind, rule, owner, path, and
+    /// the cause where a finding has its evidence. The message is left out,
+    /// because it names folders of the machine that ran the scan.
+    pub(crate) fn fingerprint(&self, owner: Owner<'_>) -> Fingerprint {
+        let (kind, key) = match owner {
+            Owner::Input(input) => (INPUT, input),
+            Owner::Package(package) => (PACKAGE, package.id.lower()),
+        };
+        Fingerprint::new(
+            kind,
+            self.rule.id(),
+            key,
+            self.path.as_deref(),
+            Some(self.cause.tag()),
+        )
     }
 }
 
@@ -311,15 +381,6 @@ pub(crate) enum Owner<'a> {
 }
 
 impl Owner<'_> {
-    /// What the gap's fingerprint names: the input as shown, or the
-    /// lowercase package ID.
-    pub(crate) fn key(&self) -> &str {
-        match self {
-            Self::Input(input) => input,
-            Self::Package(package) => package.id.lower(),
-        }
-    }
-
     /// The input, or the package ID as written.
     pub(crate) fn name(&self) -> &str {
         match self {
@@ -468,9 +529,7 @@ impl Scan {
     }
 
     pub(crate) fn gap_accepted(&self, owner: Owner<'_>, gap: &Gap) -> bool {
-        self.baseline
-            .accepted
-            .contains(&gap.fingerprint(owner.key()))
+        self.baseline.accepted.contains(&gap.fingerprint(owner))
     }
 
     /// Findings the baseline does not accept.
@@ -521,7 +580,7 @@ mod tests {
         if gap {
             outcome
                 .gaps
-                .push(Gap::new(GapRule::C001, None, String::new()));
+                .push(Gap::new(Cause::NotFound, None, String::new()));
         }
         Scan {
             packages: vec![PackageScan {
@@ -567,6 +626,23 @@ mod tests {
             Verdict::Clean
         );
         assert_eq!(scan(None, true).verdict(warning), Verdict::Incomplete);
+    }
+
+    /// A gap of an input and a gap of a package whose lowercase ID is the
+    /// input as shown are not one fingerprint (review of M4, finding 2).
+    #[test]
+    fn an_input_gap_and_a_package_gap_do_not_share_a_fingerprint() {
+        let gap = Gap::new(Cause::Limit("graph-bytes"), None, String::new());
+        let mut package = scan(None, false);
+        package.packages[0].outcome.gaps.push(gap.clone());
+        let mut input = Scan::default();
+        input.input_gaps.push(("a".to_owned(), gap));
+        input.baseline =
+            crate::baseline::parse(crate::baseline::write(&input, &Baseline::default()).as_bytes())
+                .unwrap();
+        package.baseline = input.baseline.clone();
+        assert_eq!(input.verdict(FailOn::Never), Verdict::Clean);
+        assert_eq!(package.verdict(FailOn::Never), Verdict::Incomplete);
     }
 
     #[test]

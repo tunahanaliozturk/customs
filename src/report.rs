@@ -358,7 +358,7 @@ pub(crate) fn json(scan: &Scan, out: &mut dyn Write) -> io::Result<()> {
                     version: package.map(|p| p.version.as_str()),
                     path: gap.path.as_deref(),
                     message: &gap.message,
-                    fingerprint: gap.fingerprint(owner.key()).to_string(),
+                    fingerprint: gap.fingerprint(owner).to_string(),
                     accepted: scan.gap_accepted(owner, gap),
                 }
             })
@@ -485,7 +485,7 @@ fn sarif_notification(index: Option<usize>, owner: Owner<'_>, gap: &Gap, accepte
             ("package", package.map(|p| text(p.id.as_str()))),
             ("version", package.map(|p| text(p.version.as_str()))),
             ("path", gap.path.as_deref().map(text)),
-            ("fingerprint", Some(text(&gap.fingerprint(owner.key()).to_string()))),
+            ("fingerprint", Some(text(&gap.fingerprint(owner).to_string()))),
             ("accepted", Some(Value::from(accepted))),
         ]),
     })

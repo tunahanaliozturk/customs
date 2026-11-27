@@ -10,7 +10,7 @@ use crate::assembly;
 use crate::graph::lower_invariant;
 use crate::msbuild;
 use crate::package::{Entry, Files, Limits, PackagePath, thousands};
-use crate::scan::{Finding, FindingRule, Gap, GapRule, Outcome};
+use crate::scan::{Cause, Finding, FindingRule, Gap, Outcome};
 
 /// What a file in a package is, as far as M1 can tell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -276,7 +276,7 @@ pub(crate) fn inspect(
     assembly::scan(files, &entries, &mut assets, limits, &mut outcome);
     if outcome.dropped > 0 {
         outcome.gaps.push(Gap::new(
-            GapRule::C002,
+            Cause::Limit("findings-per-package"),
             None,
             format!(
                 "limit reached: {} more findings in this package were not listed (the limit is {} per package)",

@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use roxmltree::{Document, Node};
 
 use crate::package::{Entry, Files, Limits, PackagePath, thousands};
-use crate::scan::{Finding, FindingRule, Gap, GapRule, Outcome};
+use crate::scan::{Cause, Finding, FindingRule, Gap, Outcome};
 use crate::xml::{Lines, blank_doctype, decode, options};
 
 /// Evidence, and any value from a file in a message, longer than this is
@@ -356,7 +356,7 @@ fn parse(
     match &parsed {
         Err(roxmltree::Error::NodesLimitReached) => {
             reader.file.gap = Some(Gap::new(
-                GapRule::C002,
+                Cause::Limit("xml-nodes"),
                 Some(path.as_str().to_owned()),
                 format!(
                     "limit reached: more than {} XML nodes; not read",
@@ -388,7 +388,7 @@ fn parse(
     }
     if reader.file.dropped > 0 && reader.file.gap.is_none() {
         reader.file.gap = Some(Gap::new(
-            GapRule::C002,
+            Cause::Limit("findings-per-file"),
             Some(path.as_str().to_owned()),
             format!(
                 "limit reached: {} more findings in this file were not listed (the limit is {} per file)",
@@ -428,7 +428,7 @@ pub(crate) fn scan(
             }
             Ok(bytes) if bytes.len() as u64 > limits.text_bytes => {
                 outcome.gaps.push(Gap::new(
-                    GapRule::C002,
+                    Cause::Limit("text-bytes"),
                     Some(entry.path.as_str().to_owned()),
                     format!(
                         "limit reached: an MSBuild file over {} bytes; not read",
@@ -487,6 +487,7 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::*;
+    use crate::scan::GapRule;
 
     fn path(p: &str) -> PackagePath {
         PackagePath::new(p, &Limits::default()).unwrap()

@@ -20,8 +20,8 @@ use crate::names;
 use crate::package::{Limits, thousands};
 use crate::report;
 use crate::scan::{
-    FailOn, Finding, FindingRule, Gap, GapRule, Input, InputKind, Origin, Outcome, PackageScan,
-    RULES, Scan, Severity,
+    Cause, FailOn, Finding, Gap, Input, InputKind, Origin, Outcome, PackageScan, RULES, Scan,
+    Severity,
 };
 use crate::xml;
 
@@ -408,7 +408,7 @@ fn read_graph(
         scan.input_gaps.push((
             shown.clone(),
             Gap::new(
-                GapRule::C002,
+                Cause::Limit("graph-bytes"),
                 None,
                 format!(
                     "limit reached: the graph file is over {} bytes; not read",
@@ -495,7 +495,7 @@ fn scan_graph_package(package: PackageRef, roots: &[PathBuf], limits: &Limits) -
             found
                 .outcome
                 .gaps
-                .push(Gap::new(GapRule::C001, None, message));
+                .push(Gap::new(Cause::NotFound, None, message));
         }
     }
     found
@@ -503,13 +503,12 @@ fn scan_graph_package(package: PackageRef, roots: &[PathBuf], limits: &Limits) -
 
 /// A package folder that is a link: C003, not read, so not complete.
 fn linked_package(outcome: &mut Outcome, link: &str) {
-    outcome.findings.push(Finding::new(
-        FindingRule::C003,
-        None,
+    outcome.findings.push(Finding::whole_package(
+        "link",
         format!("the package folder is a link, not followed: {link}"),
     ));
     outcome.gaps.push(Gap::new(
-        GapRule::C001,
+        Cause::Link,
         None,
         "not read, because the package folder is a link (see C003)".to_owned(),
     ));
@@ -533,9 +532,8 @@ fn scan_nupkg(file: &Path, limits: &Limits) -> Result<PackageScan, Usage> {
             ))
         }),
         Nuspec::Many => {
-            outcome.findings.push(Finding::new(
-                FindingRule::C003,
-                None,
+            outcome.findings.push(Finding::whole_package(
+                "nuspecs",
                 "more than one .nuspec at the root; NuGet reads only one, and which one is not customs's to guess"
                     .to_owned(),
             ));
@@ -597,7 +595,7 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
                 scan.input_gaps.push((
                     shown.clone(),
                     Gap::new(
-                        GapRule::C001,
+                        Cause::Link,
                         Some(id),
                         "not read, because this ID folder is a link, not followed".to_owned(),
                     ),
@@ -608,7 +606,7 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
                 scan.input_gaps.push((
                     shown.clone(),
                     Gap::new(
-                        GapRule::C001,
+                        Cause::Unreadable,
                         Some(name),
                         format!("could not list the folder: {error}"),
                     ),
@@ -621,7 +619,7 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
             scan.input_gaps.push((
                 shown.clone(),
                 Gap::new(
-                    GapRule::C001,
+                    Cause::NotPackage,
                     Some(format!("{id_name}/{version_name}")),
                     "not a package folder: the names are not an ID and a version".to_owned(),
                 ),
@@ -649,7 +647,7 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
                 inventory::inspect(&mut Folder::new(&dir), found.id.as_str(), limits);
         } else {
             found.outcome.gaps.push(Gap::new(
-                GapRule::C001,
+                Cause::Incomplete,
                 None,
                 "an incomplete package folder: no .nupkg.metadata, so NuGet would not use it"
                     .to_owned(),
@@ -663,6 +661,7 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scan::GapRule;
 
     #[test]
     fn a_graph_file_one_byte_over_the_limit_is_a_gap_not_an_error() {

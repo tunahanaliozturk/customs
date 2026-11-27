@@ -20,7 +20,7 @@ use object::{FileKind, LittleEndian as LE};
 
 use crate::inventory::{Asset, ManagedRole, NativeFormat};
 use crate::package::{Entry, Files, Limits, PackagePath, thousands};
-use crate::scan::{Finding, FindingRule, Gap, GapRule, Outcome};
+use crate::scan::{Cause, Finding, FindingRule, Gap, Outcome};
 
 /// Why a file is not an assembly customs can read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,8 +32,8 @@ enum Unreadable {
     /// A PE file with a CLI header whose headers or metadata cannot be read,
     /// or could be read in more than one way.
     Malformed(&'static str),
-    /// Over a limit: a C002 gap.
-    Limit(String),
+    /// Over a limit, named by its tag: a C002 gap.
+    Limit(&'static str, String),
 }
 
 use Unreadable::Malformed;
@@ -488,11 +488,14 @@ impl<'a> Metadata<'a> {
             .enumerate()
             .find(|(_, n)| **n > limits.table_rows)
         {
-            return Err(Unreadable::Limit(format!(
-                "limit reached: {} rows in metadata table 0x{table:02X}, over the limit of {}",
-                thousands(u64::from(*count)),
-                thousands(u64::from(limits.table_rows))
-            )));
+            return Err(Unreadable::Limit(
+                "table-rows",
+                format!(
+                    "limit reached: {} rows in metadata table 0x{table:02X}, over the limit of {}",
+                    thousands(u64::from(*count)),
+                    thousands(u64::from(limits.table_rows))
+                ),
+            ));
         }
         Ok(metadata)
     }
@@ -896,7 +899,7 @@ impl<'a> Assembly<'a> {
         }
         if dropped > 0 {
             report.gaps.push(Gap::new(
-                GapRule::C002,
+                Cause::Limit("findings-per-file"),
                 Some(path.to_owned()),
                 format!(
                     "limit reached: {} more P/Invoke findings in one assembly, over the limit of {}; not listed",
@@ -963,7 +966,7 @@ pub(crate) fn scan(
             }
             Ok(bytes) if bytes.len() as u64 > limits.assembly_bytes => {
                 outcome.gaps.push(Gap::new(
-                    GapRule::C002,
+                    Cause::Limit("assembly-bytes"),
                     Some(path.as_str().to_owned()),
                     format!(
                         "limit reached: an assembly over {} bytes; not read",
@@ -1000,9 +1003,9 @@ pub(crate) fn scan(
             continue;
         }
         let reason = match problem {
-            Unreadable::Limit(message) => {
+            Unreadable::Limit(limit, message) => {
                 outcome.gaps.push(Gap::new(
-                    GapRule::C002,
+                    Cause::Limit(limit),
                     Some(path.as_str().to_owned()),
                     message,
                 ));
@@ -1035,6 +1038,7 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::*;
+    use crate::scan::GapRule;
 
     fn root() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
@@ -1386,7 +1390,7 @@ mod tests {
         let over = metadata_root(&[("#~", table_stream(0, &[(MODULE_REF, 3)], &[], &[0; 6]))]);
         assert!(matches!(
             Metadata::parse(&over, &limits),
-            Err(Unreadable::Limit(_))
+            Err(Unreadable::Limit(..))
         ));
         let at = metadata_root(&[("#~", table_stream(0, &[(MODULE_REF, 2)], &[], &[0; 4]))]);
         assert!(Metadata::parse(&at, &limits).is_ok());

@@ -9,22 +9,29 @@ use sha2::{Digest, Sha256};
 
 use crate::scan::Scan;
 
-/// The first 128 bits of SHA-256 over the rule, the owner (the lowercase
-/// package ID, or the input of a gap that belongs to no package), the path
-/// inside the package and the evidence with whitespace collapsed, joined by
-/// a byte that UTF-8 never holds. No version and no line (ADR 0004).
+/// The first 128 bits of SHA-256 over the owner's kind (`package` or
+/// `input`), the rule, the owner (the lowercase package ID, or the input of
+/// a gap that belongs to no package), the path inside the package and the
+/// evidence (a gap's cause) with whitespace collapsed, joined by a byte that
+/// UTF-8 never holds. No version and no line (ADR 0004, ADR 0008).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Fingerprint([u8; 16]);
 
 impl Fingerprint {
-    pub(crate) fn new(rule: &str, owner: &str, path: Option<&str>, evidence: Option<&str>) -> Self {
+    pub(crate) fn new(
+        kind: &str,
+        rule: &str,
+        owner: &str,
+        path: Option<&str>,
+        evidence: Option<&str>,
+    ) -> Self {
         let evidence = evidence
             .unwrap_or_default()
             .split_whitespace()
             .collect::<Vec<_>>()
             .join(" ");
         let mut hash = Sha256::new();
-        for (n, part) in [rule, owner, path.unwrap_or_default(), &evidence]
+        for (n, part) in [kind, rule, owner, path.unwrap_or_default(), &evidence]
             .iter()
             .enumerate()
         {
@@ -152,7 +159,7 @@ pub(crate) fn write(scan: &Scan, previous: &Baseline) -> String {
     }
     for (owner, gap) in scan.gaps() {
         add(
-            gap.fingerprint(owner.key()),
+            gap.fingerprint(owner),
             gap.rule.id(),
             owner.name(),
             gap.path.as_deref(),
@@ -177,6 +184,7 @@ mod tests {
     #[test]
     fn a_fingerprint_reads_back_and_depends_on_each_part() {
         let base = Fingerprint::new(
+            "package",
             "C203",
             "contoso.a",
             Some("build/a.targets"),
@@ -188,6 +196,7 @@ mod tests {
         assert_eq!(
             base,
             Fingerprint::new(
+                "package",
                 "C203",
                 "contoso.a",
                 Some("build/a.targets"),
@@ -196,31 +205,48 @@ mod tests {
         );
         for other in [
             Fingerprint::new(
+                "package",
                 "C205",
                 "contoso.a",
                 Some("build/a.targets"),
                 Some("curl x y"),
             ),
             Fingerprint::new(
+                "package",
                 "C203",
                 "contoso.b",
                 Some("build/a.targets"),
                 Some("curl x y"),
             ),
             Fingerprint::new(
+                "package",
                 "C203",
                 "contoso.a",
                 Some("build/b.targets"),
                 Some("curl x y"),
             ),
             Fingerprint::new(
+                "package",
                 "C203",
                 "contoso.a",
                 Some("build/a.targets"),
                 Some("curl x z"),
             ),
             // The separator keeps parts from running into each other.
-            Fingerprint::new("C203", "contoso.abuild/a.targets", None, Some("curl x y")),
+            Fingerprint::new(
+                "package",
+                "C203",
+                "contoso.abuild/a.targets",
+                None,
+                Some("curl x y"),
+            ),
+            Fingerprint::new(
+                "input",
+                "C203",
+                "contoso.a",
+                Some("build/a.targets"),
+                Some("curl x y"),
+            ),
         ] {
             assert_ne!(base, other);
         }

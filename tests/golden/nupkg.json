@@ -60,7 +60,7 @@
       "line": null,
       "message": "build assets: build/Contoso.Build.Tools.targets (+2 more files)",
       "evidence": null,
-      "fingerprint": "7548330102b30c6e886244d6b263a706",
+      "fingerprint": "e4aff8a38c9b8e2e7c16f0e004ed46c7",
       "accepted": false
     },
     {
@@ -72,7 +72,7 @@
       "line": 4,
       "message": "Exec task",
       "evidence": "echo fixture, would fetch https://example.invalid/tool",
-      "fingerprint": "1b44ae77300da478198ecb9a3a936289",
+      "fingerprint": "3a67b8159b9dce01b14b50a5346cbbc4",
       "accepted": false
     },
     {
@@ -84,7 +84,7 @@
       "line": 4,
       "message": "URL",
       "evidence": "https://example.invalid/tool",
-      "fingerprint": "18a37d030965a8b1748ae3671b4727c6",
+      "fingerprint": "61af33cf3ef234330fbe28058265872b",
       "accepted": false
     }
   ],

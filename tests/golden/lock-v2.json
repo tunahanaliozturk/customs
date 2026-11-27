@@ -95,7 +95,7 @@
       "line": null,
       "message": "build assets: BUILD/Contoso.Shouting.targets",
       "evidence": null,
-      "fingerprint": "1adfb0123186b750db55dc70f9486d12",
+      "fingerprint": "7c5b86a4fea816757b55d5d78d8da706",
       "accepted": false
     },
     {
@@ -107,7 +107,7 @@
       "line": null,
       "message": "contentFiles source: contentFiles/cs/any/Helpers.cs",
       "evidence": null,
-      "fingerprint": "53af604ec9a20c93e4cdc14863e60390",
+      "fingerprint": "6d6ba2dd6b0d6a0c97900ceaf45b3839",
       "accepted": false
     },
     {
@@ -119,7 +119,7 @@
       "line": null,
       "message": "PowerShell script: tools/init.ps1 (+1 more file)",
       "evidence": null,
-      "fingerprint": "a9ea6d28855e36df9ab65c78c7157010",
+      "fingerprint": "2b06dcd63ae0751d23e4e058ee5d12ab",
       "accepted": false
     }
   ],
