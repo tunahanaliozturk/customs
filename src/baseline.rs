@@ -49,6 +49,24 @@ impl Fingerprint {
         )
     }
 
+    /// The fingerprint of SARIF's `partialFingerprints`: the first 128 bits
+    /// of SHA-256 over this fingerprint's 16 bytes, the byte 0xFF and the
+    /// lowercase normalised version, so that two versions of one package in
+    /// one run differ (ADR 0008).
+    pub(crate) fn with_version(self, version: &str) -> Self {
+        let mut hash = Sha256::new();
+        hash.update(self.0);
+        hash.update([0xFF]);
+        hash.update(version.as_bytes());
+        // A SHA-256 digest always has 32 bytes, so the default is never used.
+        Self(
+            hash.finalize()
+                .first_chunk::<16>()
+                .copied()
+                .unwrap_or_default(),
+        )
+    }
+
     /// Reads 32 lowercase hexadecimal digits.
     fn parse(text: &str) -> Option<Self> {
         if text.len() != 32 {
@@ -343,7 +361,9 @@ mod tests {
     /// Known answers, computed apart from this code from the byte layout of
     /// ADR 0008, with
     /// `python -c "import hashlib; print(hashlib.sha256(b'\xff'.join([b'package', b'C203', b'contoso.a', b'build/a.targets', b'curl x y'])).hexdigest()[:32])"`
-    /// and the same for `[b'input', b'C001', b'packages', b'', b'not-found']`.
+    /// and the same for `[b'input', b'C001', b'packages', b'', b'not-found']`;
+    /// the SARIF one with
+    /// `python -c "import hashlib; print(hashlib.sha256(bytes.fromhex('9a8acf4566992ef52638006bc92d75d2') + b'\xff1.0.0').hexdigest()[:32])"`.
     #[test]
     fn a_fingerprint_matches_the_documented_layout() {
         let finding = Fingerprint::new(
@@ -356,6 +376,10 @@ mod tests {
         assert_eq!(finding.to_string(), "a0c2dd26229a8a41cc224150440e3daa");
         let gap = Fingerprint::new("input", "C001", "packages", None, Some("not-found"));
         assert_eq!(gap.to_string(), "8341d53f92773acefca7fd748d285b4f");
+        let sarif = Fingerprint::parse("9a8acf4566992ef52638006bc92d75d2")
+            .unwrap()
+            .with_version("1.0.0");
+        assert_eq!(sarif.to_string(), "335f79cf227b198af9a7e04c798b46cf");
     }
 
     #[test]

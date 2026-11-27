@@ -265,7 +265,7 @@
             }
           ],
           "partialFingerprints": {
-            "customsFingerprint/v1": "555a7a5923c80b0caceb3ecd52874e41"
+            "customsFingerprint/v1": "63d77beb8413616bebc978f8b0de80a7"
           },
           "properties": {
             "package": "Contoso.Analyzers",
@@ -293,7 +293,7 @@
             }
           ],
           "partialFingerprints": {
-            "customsFingerprint/v1": "e4aff8a38c9b8e2e7c16f0e004ed46c7"
+            "customsFingerprint/v1": "b1ed28d49b1806adc12bdb31b46dcc22"
           },
           "properties": {
             "package": "Contoso.Build.Tools",
@@ -321,7 +321,7 @@
             }
           ],
           "partialFingerprints": {
-            "customsFingerprint/v1": "3a67b8159b9dce01b14b50a5346cbbc4"
+            "customsFingerprint/v1": "3ae60b955577024f3093603086784acc"
           },
           "properties": {
             "package": "Contoso.Build.Tools",
@@ -351,7 +351,7 @@
             }
           ],
           "partialFingerprints": {
-            "customsFingerprint/v1": "61af33cf3ef234330fbe28058265872b"
+            "customsFingerprint/v1": "d5cfed591895362b68515bb69f41a617"
           },
           "properties": {
             "package": "Contoso.Build.Tools",
@@ -381,7 +381,7 @@
             }
           ],
           "partialFingerprints": {
-            "customsFingerprint/v1": "501700808a305cf25fbe47f81cb1f92c"
+            "customsFingerprint/v1": "b9cad07044270b39f09ca6a4f49ee18d"
           },
           "properties": {
             "package": "Fabrikam.Native",

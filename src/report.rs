@@ -528,7 +528,10 @@ fn sarif_result(index: Option<usize>, package: &PackageScan, finding: &Finding) 
         "message": {"text": escape(&message)},
         "locations": locations(package),
         "partialFingerprints": {
-            "customsFingerprint/v1": finding.fingerprint(&package.id).to_string()
+            "customsFingerprint/v1": finding
+                .fingerprint(&package.id)
+                .with_version(package.version.lower())
+                .to_string()
         },
         "properties": properties(&[
             ("package", Some(text(package.id.as_str()))),

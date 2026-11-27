@@ -143,6 +143,56 @@ fn a_sarif_notification_does_not_name_the_folders_searched() -> TestResult {
     Ok(())
 }
 
+/// Two versions of one package in one run have findings with one baseline
+/// fingerprint; their SARIF partial fingerprints differ, because those also
+/// cover the version (review of M4, finding 7).
+#[test]
+fn two_versions_of_a_package_have_different_partial_fingerprints() -> TestResult {
+    let dir = tempfile::tempdir()?;
+    for version in ["1.0.0", "2.0.0"] {
+        let package = dir
+            .path()
+            .join("packages")
+            .join("contoso.gen")
+            .join(version);
+        fs::create_dir_all(package.join("build"))?;
+        fs::write(package.join(".nupkg.metadata"), "{}")?;
+        fs::write(
+            package.join("build").join("Contoso.Gen.targets"),
+            r#"<Project><Target Name="G"><Exec Command="gen" /></Target></Project>"#,
+        )?;
+    }
+    fs::write(
+        dir.path().join("packages.lock.json"),
+        r#"{"version": 1, "dependencies": {
+            "net8.0": {"Contoso.Gen": {"type": "Direct", "resolved": "1.0.0"}},
+            "net48": {"Contoso.Gen": {"type": "Direct", "resolved": "2.0.0"}}}}"#,
+    )?;
+    let run = customs(
+        dir.path(),
+        &[
+            "scan",
+            "packages.lock.json",
+            "--packages-dir",
+            "packages",
+            "--format",
+            "sarif",
+        ],
+    )?;
+    let report = run.json()?;
+    let partial: Vec<&str> = report["runs"][0]["results"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|r| r["partialFingerprints"]["customsFingerprint/v1"].as_str())
+        .collect();
+    // C101 and C203 for each version.
+    assert_eq!(partial.len(), 4, "{report}");
+    let unique: std::collections::BTreeSet<&&str> = partial.iter().collect();
+    assert_eq!(unique.len(), 4, "{partial:?}");
+    Ok(())
+}
+
 #[test]
 fn the_sarif_of_the_lock_file_fixture_matches_the_golden_file() -> TestResult {
     let (code, text) = sarif(&[
