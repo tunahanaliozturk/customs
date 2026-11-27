@@ -12,6 +12,9 @@ version = 2
 confidence-threshold = 0.9
 allow = [
   "MIT",
+  # borrow-or-share, through the test-only jsonschema that checks SARIF
+  # output against its schema.
+  "MIT-0",
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",
   "BSD-2-Clause",

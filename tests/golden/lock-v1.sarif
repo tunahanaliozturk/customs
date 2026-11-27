@@ -1,0 +1,367 @@
+{
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "customs",
+          "version": "0.0.0",
+          "semanticVersion": "0.0.0",
+          "informationUri": "https://github.com/tunahanaliozturk/customs",
+          "rules": [
+            {
+              "id": "C003",
+              "shortDescription": {
+                "text": "An entry with `..`, an absolute path or a drive letter, two entries whose names are equal ignoring case, or a link in a package folder."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C004",
+              "shortDescription": {
+                "text": "An MSBuild file that is not well-formed XML, has a DTD, or uses an encoding other than UTF-8 or UTF-16."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C101",
+              "shortDescription": {
+                "text": "Build assets: props or targets in build/, buildTransitive/, buildMultitargeting/ or buildCrossTargeting/."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C102",
+              "shortDescription": {
+                "text": "Analyzer or source generator assembly in analyzers/."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C103",
+              "shortDescription": {
+                "text": "PowerShell script in tools/."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C104",
+              "shortDescription": {
+                "text": "Native binary: in runtimes/*/native/, or an ELF or Mach-O file anywhere."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C105",
+              "shortDescription": {
+                "text": "contentFiles source code that will be compiled into the project."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C201",
+              "shortDescription": {
+                "text": "UsingTask with a TaskFactory: CodeTaskFactory, RoslynCodeTaskFactory or any other."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "C202",
+              "shortDescription": {
+                "text": "UsingTask with AssemblyFile: an assembly that MSBuild loads."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C203",
+              "shortDescription": {
+                "text": "Exec task."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C204",
+              "shortDescription": {
+                "text": "DownloadFile task."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C205",
+              "shortDescription": {
+                "text": "A URL (http, https, ftp) in an attribute value or element text. Comments are ignored."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C206",
+              "shortDescription": {
+                "text": "A base64-looking run of at least 200 characters."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C207",
+              "shortDescription": {
+                "text": "An Import that cannot be resolved inside the package."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C301",
+              "shortDescription": {
+                "text": "Module initialiser: <Module> has a .cctor. An error in an analyzer or build-time assembly."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C302",
+              "shortDescription": {
+                "text": "P/Invoke that changes memory protection or writes to another process. An error in an analyzer or build-time assembly."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "C303",
+              "shortDescription": {
+                "text": "Marker of a known obfuscator. A warning in an analyzer or build-time assembly."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            },
+            {
+              "id": "C304",
+              "shortDescription": {
+                "text": "A .dll or .exe where NuGet expects managed code that is not a readable managed assembly. An error in an analyzer or build-time assembly."
+              },
+              "helpUri": "https://github.com/tunahanaliozturk/customs/blob/main/docs/design.md#rules",
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            }
+          ],
+          "notifications": [
+            {
+              "id": "C001",
+              "shortDescription": {
+                "text": "A package in the graph was not found on disk, or a file of it could not be read."
+              }
+            },
+            {
+              "id": "C002",
+              "shortDescription": {
+                "text": "A limit stopped reading. The message names the limit and the file."
+              }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": []
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "C102",
+          "ruleIndex": 3,
+          "level": "note",
+          "message": {
+            "text": "Contoso.Analyzers 1.0.4: analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file) (analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "lock-v1/packages.lock.json"
+                },
+                "region": {
+                  "startLine": 14
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "customsFingerprint/v1": "5ca79becda769fa2f13a0e12cbc8665a"
+          },
+          "properties": {
+            "package": "Contoso.Analyzers",
+            "version": "1.0.4",
+            "path": "analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll"
+          }
+        },
+        {
+          "ruleId": "C101",
+          "ruleIndex": 2,
+          "level": "note",
+          "message": {
+            "text": "Contoso.Build.Tools 3.2.0: build assets: build/Contoso.Build.Tools.targets (+2 more files) (build/Contoso.Build.Tools.targets)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "lock-v1/packages.lock.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "customsFingerprint/v1": "7548330102b30c6e886244d6b263a706"
+          },
+          "properties": {
+            "package": "Contoso.Build.Tools",
+            "version": "3.2.0",
+            "path": "build/Contoso.Build.Tools.targets"
+          }
+        },
+        {
+          "ruleId": "C203",
+          "ruleIndex": 9,
+          "level": "warning",
+          "message": {
+            "text": "Contoso.Build.Tools 3.2.0: Exec task (build/tasks/Fetch.targets:4): echo fixture, would fetch https://example.invalid/tool"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "lock-v1/packages.lock.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "customsFingerprint/v1": "1b44ae77300da478198ecb9a3a936289"
+          },
+          "properties": {
+            "package": "Contoso.Build.Tools",
+            "version": "3.2.0",
+            "path": "build/tasks/Fetch.targets",
+            "line": 4,
+            "evidence": "echo fixture, would fetch https://example.invalid/tool"
+          }
+        },
+        {
+          "ruleId": "C205",
+          "ruleIndex": 11,
+          "level": "warning",
+          "message": {
+            "text": "Contoso.Build.Tools 3.2.0: URL (build/tasks/Fetch.targets:4): https://example.invalid/tool"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "lock-v1/packages.lock.json"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "customsFingerprint/v1": "18a37d030965a8b1748ae3671b4727c6"
+          },
+          "properties": {
+            "package": "Contoso.Build.Tools",
+            "version": "3.2.0",
+            "path": "build/tasks/Fetch.targets",
+            "line": 4,
+            "evidence": "https://example.invalid/tool"
+          }
+        },
+        {
+          "ruleId": "C104",
+          "ruleIndex": 5,
+          "level": "note",
+          "message": {
+            "text": "Fabrikam.Native 2.1.0: native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files) (runtimes/linux-x64/native/libfabrikam.so)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "lock-v1/packages.lock.json"
+                },
+                "region": {
+                  "startLine": 33
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "customsFingerprint/v1": "6a6715a792d9b7a3ac3ea29dc737f3eb"
+          },
+          "properties": {
+            "package": "Fabrikam.Native",
+            "version": "2.1.0",
+            "path": "runtimes/linux-x64/native/libfabrikam.so"
+          }
+        }
+      ],
+      "properties": {
+        "acceptedByBaseline": 0
+      }
+    }
+  ]
+}

@@ -116,7 +116,9 @@
       "path": "analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll",
       "line": null,
       "message": "analyzer: analyzers/dotnet/cs/Contoso.Analyzers.CodeFixes.dll (+1 more file)",
-      "evidence": null
+      "evidence": null,
+      "fingerprint": "5ca79becda769fa2f13a0e12cbc8665a",
+      "accepted": false
     },
     {
       "rule": "C103",
@@ -126,7 +128,9 @@
       "path": "tools/init.ps1",
       "line": null,
       "message": "PowerShell script: tools/init.ps1 (+1 more file)",
-      "evidence": null
+      "evidence": null,
+      "fingerprint": "a9ea6d28855e36df9ab65c78c7157010",
+      "accepted": false
     },
     {
       "rule": "C104",
@@ -136,7 +140,9 @@
       "path": "runtimes/linux-x64/native/libfabrikam.so",
       "line": null,
       "message": "native binary: runtimes/linux-x64/native/libfabrikam.so (ELF) (+3 more files)",
-      "evidence": null
+      "evidence": null,
+      "fingerprint": "6a6715a792d9b7a3ac3ea29dc737f3eb",
+      "accepted": false
     }
   ],
   "incomplete": []

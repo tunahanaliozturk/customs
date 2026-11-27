@@ -2,7 +2,7 @@
 //! the bytes.
 
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -410,6 +410,111 @@ fn parse_assets(value: serde_json::Value) -> Result<Graph, ParseError> {
     })
 }
 
+/// The 1-based line of each package's entry in a lock or assets file, by
+/// lowercase ID and lowercase normalised version, for SARIF locations: in a
+/// lock file the line of the first `"Id": {` entry whose `resolved` is that
+/// version, in an assets file the line of the `"Id/Version"` key under
+/// `libraries`. `PackageDownload` items get no line.
+///
+/// One pass over the bytes, no recursion: a string is decoded only when it
+/// is a key at one of those places or a `resolved` value, so the work is
+/// linear in the file on any input. The caller has parsed the file as a
+/// graph first; on bytes that are not JSON the result is merely incomplete.
+pub(crate) fn entry_lines(bytes: &[u8]) -> HashMap<(String, String), u32> {
+    let mut lines = HashMap::new();
+    let mut line: u32 = 1;
+    let mut depth = 0usize;
+    // The key at depth 1 whose value the walk is inside.
+    let mut section = Section::Other;
+    // A lock entry's ID and line, and whether the next string is the value
+    // of its `resolved`.
+    let mut entry: Option<(String, u32)> = None;
+    let mut resolved_next = false;
+    let mut at = 0;
+    while let Some(&byte) = bytes.get(at) {
+        match byte {
+            b'\n' => line = line.saturating_add(1),
+            b'{' | b'[' => {
+                depth += 1;
+                resolved_next = false;
+            }
+            b'}' | b']' => depth = depth.saturating_sub(1),
+            b'"' => {
+                let end = string_end(bytes, at);
+                let token = bytes.get(at..=end).unwrap_or_default();
+                let mut next = end + 1;
+                while bytes.get(next).is_some_and(u8::is_ascii_whitespace) {
+                    if bytes.get(next) == Some(&b'\n') {
+                        line = line.saturating_add(1);
+                    }
+                    next += 1;
+                }
+                let is_key = bytes.get(next) == Some(&b':');
+                let decode = || serde_json::from_slice::<String>(token).ok();
+                match (is_key, depth, section) {
+                    (true, 1, _) => {
+                        section = match decode().as_deref() {
+                            Some("dependencies") => Section::Dependencies,
+                            Some("libraries") => Section::Libraries,
+                            _ => Section::Other,
+                        };
+                    }
+                    (true, 2, Section::Libraries) => {
+                        if let Some((id, version)) =
+                            decode().as_deref().and_then(|k| k.split_once('/'))
+                        {
+                            insert_line(&mut lines, id, version, line);
+                        }
+                    }
+                    (true, 3, Section::Dependencies) => entry = decode().map(|id| (id, line)),
+                    (true, 4, Section::Dependencies) => {
+                        resolved_next = decode().as_deref() == Some("resolved");
+                    }
+                    (false, 4, Section::Dependencies) if resolved_next => {
+                        resolved_next = false;
+                        if let (Some((id, entry_line)), Some(version)) = (&entry, decode()) {
+                            insert_line(&mut lines, id, &version, *entry_line);
+                        }
+                    }
+                    _ => {}
+                }
+                at = next;
+                continue;
+            }
+            _ => {}
+        }
+        at += 1;
+    }
+    lines
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Section {
+    Dependencies,
+    Libraries,
+    Other,
+}
+
+/// The index of the quote that ends the string starting at `start`, or the
+/// last index if it has no end. A backslash skips the byte after it.
+fn string_end(bytes: &[u8], start: usize) -> usize {
+    let mut at = start + 1;
+    while let Some(&byte) = bytes.get(at) {
+        match byte {
+            b'"' => return at,
+            b'\\' => at += 2,
+            _ => at += 1,
+        }
+    }
+    bytes.len().saturating_sub(1)
+}
+
+fn insert_line(lines: &mut HashMap<(String, String), u32>, id: &str, version: &str, line: u32) {
+    if let (Ok(id), Ok(version)) = (PackageId::new(id), PackageVersion::new(version)) {
+        lines.entry((id.lower, version.lower)).or_insert(line);
+    }
+}
+
 /// The version inside an exact range: `[1.0.0]` or `[1.0.0, 1.0.0]`.
 fn exact_version(range: &str) -> Option<&str> {
     let inner = range.trim().strip_prefix('[')?.strip_suffix(']')?;
@@ -612,5 +717,92 @@ mod tests {
         assert_eq!(exact_version(" [1.0.0, 1.0.0] "), Some("1.0.0"));
         assert_eq!(exact_version("[1.0.0, 2.0.0]"), None);
         assert_eq!(exact_version("1.0.0"), None);
+    }
+
+    fn line_of(lines: &HashMap<(String, String), u32>, id: &str, version: &str) -> Option<u32> {
+        lines.get(&(id.to_owned(), version.to_owned())).copied()
+    }
+
+    #[test]
+    fn a_lock_entry_is_found_at_the_line_of_its_id_for_each_resolved_version() {
+        let lock = b"\xEF\xBB\xBF{\r\n  \"version\": 2,\r\n  \"dependencies\": {\r\n    \"net8.0\": {\r\n      \"Contoso.A\": {\r\n        \"type\": \"Direct\",\r\n        \"resolved\": \"1.0.0\",\r\n        \"contentHash\": \"x\\\"y\"\r\n      },\r\n      \"\\u0042\": {\"type\": \"Transitive\", \"resolved\": \"2.0\"}\r\n    },\r\n    \"net48\": {\r\n      \"Contoso.A\": {\"type\": \"Direct\", \"resolved\": \"1.5.0\"}\r\n    }\r\n  }\r\n}";
+        let lines = entry_lines(lock);
+        assert_eq!(line_of(&lines, "contoso.a", "1.0.0"), Some(5));
+        assert_eq!(line_of(&lines, "b", "2.0.0"), Some(10));
+        assert_eq!(line_of(&lines, "contoso.a", "1.5.0"), Some(13));
+        assert_eq!(lines.len(), 3);
+    }
+
+    #[test]
+    fn an_assets_library_is_found_at_the_line_of_its_key_and_targets_are_not() {
+        let assets = br#"{
+  "version": 3,
+  "targets": {
+    "net8.0": {
+      "Contoso.A/1.0.0": {"type": "package"}
+    }
+  },
+  "libraries": {
+    "Contoso.A/1.0.0": {
+      "type": "package",
+      "files": ["lib/a.dll", "x/y:z"]
+    },
+    "Web/1.0.0": {"type": "project"}
+  }
+}"#;
+        let lines = entry_lines(assets);
+        assert_eq!(line_of(&lines, "contoso.a", "1.0.0"), Some(9));
+        assert_eq!(line_of(&lines, "web", "1.0.0"), Some(13));
+    }
+
+    #[test]
+    fn entry_lines_survive_every_truncation_and_odd_bytes() {
+        let lock = br#"{"version": 1, "dependencies": {"net8.0": {"A": {"type": "Direct", "resolved": "1.0.0"}}}}"#;
+        for end in 0..=lock.len() {
+            let _ = entry_lines(&lock[..end]);
+        }
+        for bytes in [
+            &b"\"\\"[..],
+            b"\"",
+            b"\\",
+            b"}}}]]]",
+            b"\"a\":\"b\":",
+            b"{{{{{\"resolved\":\"1\"}",
+        ] {
+            let _ = entry_lines(bytes);
+        }
+    }
+
+    #[test]
+    fn entry_lines_take_linear_time() {
+        // Many entries, each with a resolved value, and one string of a
+        // megabyte with escapes: twice the input must not take much more
+        // than twice the time.
+        let input = |n: usize| {
+            let mut text = String::from(r#"{"version": 1, "dependencies": {"net8.0": {"#);
+            for i in 0..n {
+                text += r#""P"#;
+                text += &i.to_string();
+                text += r#"": {"type": "Direct", "resolved": "1.0."#;
+                text += &i.to_string();
+                text += r#""},"#;
+            }
+            text += r#""Q": {"resolved": ""#;
+            text += &"\\\"".repeat(n);
+            text += r#""}}}}"#;
+            text.into_bytes()
+        };
+        let time = |bytes: &[u8]| {
+            let start = std::time::Instant::now();
+            let lines = entry_lines(bytes);
+            (start.elapsed(), lines.len())
+        };
+        let (small, found) = time(&input(50_000));
+        assert_eq!(found, 50_000);
+        let (large, _) = time(&input(100_000));
+        assert!(
+            large < small * 4 + std::time::Duration::from_millis(200),
+            "{small:?} then {large:?}"
+        );
     }
 }

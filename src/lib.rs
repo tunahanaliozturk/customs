@@ -10,6 +10,7 @@
 
 mod archive;
 mod assembly;
+mod baseline;
 mod cli;
 mod folder;
 mod graph;

@@ -57,7 +57,9 @@
       "package": "Contoso.Missing",
       "version": "1.0.0",
       "path": null,
-      "message": "not found in packages, no-such-cache"
+      "message": "not found in packages, no-such-cache",
+      "fingerprint": "2aa01ee4a3e7fe12d7a5f558f91da570",
+      "accepted": false
     }
   ]
 }

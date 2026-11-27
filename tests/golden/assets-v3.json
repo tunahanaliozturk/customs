@@ -42,7 +42,9 @@
       "path": "contentFiles/cs/any/Helpers.cs",
       "line": null,
       "message": "contentFiles source: contentFiles/cs/any/Helpers.cs",
-      "evidence": null
+      "evidence": null,
+      "fingerprint": "53af604ec9a20c93e4cdc14863e60390",
+      "accepted": false
     }
   ],
   "incomplete": []

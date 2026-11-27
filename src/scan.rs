@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 
 use serde::Serialize;
 
+use crate::baseline::{Baseline, Fingerprint};
 use crate::graph::{Dependency, PackageId, PackageVersion};
 use crate::inventory::Asset;
 use crate::package::{Budget, PackagePath};
@@ -244,6 +245,17 @@ impl Finding {
         };
         self
     }
+
+    /// The fingerprint of ADR 0004: rule, lowercase package ID, path and
+    /// evidence; not the version, the line or the message.
+    pub(crate) fn fingerprint(&self, id: &PackageId) -> Fingerprint {
+        Fingerprint::new(
+            self.rule.id(),
+            id.lower(),
+            self.path.as_deref(),
+            self.evidence.as_deref(),
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -259,6 +271,38 @@ impl Gap {
             rule,
             path,
             message,
+        }
+    }
+
+    /// The fingerprint of a gap: rule, owner and path. The message is left
+    /// out, because it names folders of the machine that ran the scan.
+    pub(crate) fn fingerprint(&self, owner: &str) -> Fingerprint {
+        Fingerprint::new(self.rule.id(), owner, self.path.as_deref(), None)
+    }
+}
+
+/// What a gap belongs to: an input, or a package.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Owner<'a> {
+    Input(&'a str),
+    Package(&'a PackageScan),
+}
+
+impl Owner<'_> {
+    /// What the gap's fingerprint names: the input as shown, or the
+    /// lowercase package ID.
+    pub(crate) fn key(&self) -> &str {
+        match self {
+            Self::Input(input) => input,
+            Self::Package(package) => package.id.lower(),
+        }
+    }
+
+    /// The input, or the package ID as written.
+    pub(crate) fn name(&self) -> &str {
+        match self {
+            Self::Input(input) => input,
+            Self::Package(package) => package.id.as_str(),
         }
     }
 }
@@ -303,6 +347,9 @@ pub(crate) struct PackageScan {
     pub(crate) frameworks: BTreeSet<String>,
     /// The folder or file it was read from, for display; `None` if not found.
     pub(crate) source: Option<String>,
+    /// Where the package is named: each graph file that lists it, with the
+    /// line of its entry when known; or the `.nupkg` or package folder.
+    pub(crate) listed: Vec<(String, Option<u32>)>,
     pub(crate) assets: Vec<(PackagePath, Asset)>,
     pub(crate) outcome: Outcome,
 }
@@ -323,13 +370,15 @@ pub(crate) struct Input {
     pub(crate) kind: Option<InputKind>,
 }
 
-/// A whole scan: inputs, packages sorted by ID and version, and gaps that
-/// belong to an input rather than a package.
+/// A whole scan: inputs, packages sorted by ID and version, gaps that
+/// belong to an input rather than a package, and the baseline that accepts
+/// some of the findings and gaps.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Scan {
     pub(crate) inputs: Vec<Input>,
     pub(crate) packages: Vec<PackageScan>,
     pub(crate) input_gaps: Vec<(String, Gap)>,
+    pub(crate) baseline: Baseline,
 }
 
 /// `--fail-on`: the lowest severity that fails the scan, or never.
@@ -373,24 +422,62 @@ impl Scan {
             .flat_map(|p| p.outcome.findings.iter().map(move |f| (p, f)))
     }
 
-    pub(crate) fn gap_count(&self) -> usize {
-        self.input_gaps.len()
-            + self
-                .packages
-                .iter()
-                .map(|p| p.outcome.gaps.len())
-                .sum::<usize>()
+    /// Every gap with what it belongs to: inputs first, then packages.
+    pub(crate) fn gaps(&self) -> impl Iterator<Item = (Owner<'_>, &Gap)> {
+        self.input_gaps
+            .iter()
+            .map(|(input, gap)| (Owner::Input(input), gap))
+            .chain(
+                self.packages
+                    .iter()
+                    .flat_map(|p| p.outcome.gaps.iter().map(move |g| (Owner::Package(p), g))),
+            )
     }
 
-    /// Findings at or above `--fail-on` come before gaps: precedence 1, then 3.
+    /// All gaps, accepted by the baseline or not.
+    pub(crate) fn gap_count(&self) -> usize {
+        self.gaps().count()
+    }
+
+    pub(crate) fn finding_accepted(&self, package: &PackageScan, finding: &Finding) -> bool {
+        self.baseline
+            .accepted
+            .contains(&finding.fingerprint(&package.id))
+    }
+
+    pub(crate) fn gap_accepted(&self, owner: Owner<'_>, gap: &Gap) -> bool {
+        self.baseline
+            .accepted
+            .contains(&gap.fingerprint(owner.key()))
+    }
+
+    /// Findings the baseline does not accept.
+    pub(crate) fn open_findings(&self) -> impl Iterator<Item = (&PackageScan, &Finding)> {
+        self.findings()
+            .filter(|(p, f)| !self.finding_accepted(p, f))
+    }
+
+    /// Findings and gaps the baseline accepts.
+    pub(crate) fn accepted_count(&self) -> usize {
+        self.findings()
+            .filter(|(p, f)| self.finding_accepted(p, f))
+            .count()
+            + self
+                .gaps()
+                .filter(|(o, g)| self.gap_accepted(*o, g))
+                .count()
+    }
+
+    /// Findings at or above `--fail-on` come before gaps: precedence 1, then
+    /// 3. What the baseline accepts counts for neither.
     pub(crate) fn verdict(&self, fail_on: FailOn) -> Verdict {
         let failing = match fail_on {
-            FailOn::At(threshold) => self.findings().any(|(_, f)| f.severity >= threshold),
+            FailOn::At(threshold) => self.open_findings().any(|(_, f)| f.severity >= threshold),
             FailOn::Never => false,
         };
         if failing {
             Verdict::Findings
-        } else if self.gap_count() > 0 {
+        } else if self.gaps().any(|(o, g)| !self.gap_accepted(o, g)) {
             Verdict::Incomplete
         } else {
             Verdict::Clean
@@ -421,6 +508,7 @@ mod tests {
                 origin: Origin::Nupkg,
                 frameworks: BTreeSet::new(),
                 source: None,
+                listed: Vec::new(),
                 assets: Vec::new(),
                 outcome,
             }],

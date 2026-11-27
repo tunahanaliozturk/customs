@@ -10,6 +10,7 @@ use std::process::ExitCode;
 
 use crate::archive;
 use crate::archive::Nuspec;
+use crate::baseline;
 use crate::folder::Folder;
 use crate::graph::{self, GraphKind, PackageId, PackageRef, PackageVersion};
 use crate::inventory;
@@ -29,8 +30,9 @@ and at load time. It reads the graph that restore resolved and inspects the
 package files as data. It never runs MSBuild and never loads an assembly.
 
 Usage:
-  customs scan [PATH...] [--packages-dir DIR] [--format text|json]
+  customs scan [PATH...] [--packages-dir DIR] [--format text|json|sarif]
                [--output FILE] [--fail-on note|warning|error|never]
+               [--baseline FILE] [--write-baseline FILE]
   customs rules
   customs --help | --version
 
@@ -41,6 +43,12 @@ every package in that global packages folder.
 Packages of a lock file are looked up in --packages-dir, then in
 NUGET_PACKAGES or ~/.nuget/packages. Packages of an assets file are looked up
 in --packages-dir, then in the assets file's own package folders, in order.
+
+--write-baseline FILE writes every finding and gap of the scan to FILE and
+exits 0 (or 2). --baseline FILE accepts what such a file lists: accepted
+findings are not shown and accepted gaps are marked, and neither counts for
+the exit code. The fingerprint of a finding leaves out the version and the
+line, so an update that changes nothing relevant stays accepted.
 
 Exit codes:
   0  complete, no finding at or above --fail-on (default warning)
@@ -58,8 +66,7 @@ What customs cannot see:
     graph files, and the content of contentFiles source code
   - a package cache changed after restore
 
-Planned, not built yet: package ID rules, baselines and SARIF (M4), customs
-diff and --verify-cache (M5).
+Planned, not built yet: customs diff and --verify-cache (M5).
 ";
 
 /// A usage error, or an input that could not be read as a graph: exit 2.
@@ -76,6 +83,7 @@ impl From<lexopt::Error> for Usage {
 enum Format {
     Text,
     Json,
+    Sarif,
 }
 
 #[derive(Debug)]
@@ -85,6 +93,8 @@ struct ScanOptions {
     format: Format,
     output: Option<PathBuf>,
     fail_on: FailOn,
+    baseline: Option<PathBuf>,
+    write_baseline: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -132,6 +142,8 @@ fn parse_scan(parser: &mut lexopt::Parser) -> Result<Command, Usage> {
         format: Format::Text,
         output: None,
         fail_on: FailOn::At(Severity::Warning),
+        baseline: None,
+        write_baseline: None,
     };
     while let Some(arg) = parser.next()? {
         match arg {
@@ -142,8 +154,8 @@ fn parse_scan(parser: &mut lexopt::Parser) -> Result<Command, Usage> {
                 options.format = match parser.value()?.to_str() {
                     Some("text") => Format::Text,
                     Some("json") => Format::Json,
-                    Some("sarif") => return Err(planned("--format sarif", "M4")),
-                    _ => return Err(Usage("--format takes text or json".to_owned())),
+                    Some("sarif") => Format::Sarif,
+                    _ => return Err(Usage("--format takes text, json or sarif".to_owned())),
                 };
             }
             Long("fail-on") => {
@@ -159,8 +171,10 @@ fn parse_scan(parser: &mut lexopt::Parser) -> Result<Command, Usage> {
                     }
                 };
             }
-            Long("baseline") => return Err(planned("--baseline", "M4")),
-            Long("write-baseline") => return Err(planned("--write-baseline", "M4")),
+            Long("baseline") => options.baseline = Some(PathBuf::from(parser.value()?)),
+            Long("write-baseline") => {
+                options.write_baseline = Some(PathBuf::from(parser.value()?));
+            }
             Long("verify-cache") => return Err(planned("--verify-cache", "M5")),
             Long("offline") => return Err(planned("--offline", "M5")),
             Long("cache-dir") => return Err(planned("--cache-dir", "M5")),
@@ -223,7 +237,22 @@ fn execute(command: Command, limits: &Limits) -> Result<u8, Usage> {
         Command::Scan(options) => {
             let default_root =
                 locate::default_root(std::env::var_os("NUGET_PACKAGES"), std::env::home_dir());
-            let scan = scan(&options, default_root.as_deref(), limits)?;
+            let previous = match &options.baseline {
+                Some(path) => read_baseline(path, limits)?,
+                None => baseline::Baseline::default(),
+            };
+            let mut scan = scan(&options, default_root.as_deref(), limits)?;
+            scan.baseline = match &options.write_baseline {
+                // The report then shows what the new baseline accepts:
+                // everything, so the scan exits 0.
+                Some(path) => {
+                    let text = baseline::write(&scan, &previous);
+                    std::fs::write(path, &text)
+                        .map_err(|e| Usage(format!("could not write {}: {e}", display(path))))?;
+                    baseline::parse(text.as_bytes()).map_err(Usage)?
+                }
+                None => previous,
+            };
             let mut out: Box<dyn Write> = match &options.output {
                 Some(path) => {
                     Box::new(BufWriter::new(File::create(path).map_err(|e| {
@@ -235,6 +264,7 @@ fn execute(command: Command, limits: &Limits) -> Result<u8, Usage> {
             match options.format {
                 Format::Text => report::text(&scan, options.fail_on, &mut out),
                 Format::Json => report::json(&scan, &mut out),
+                Format::Sarif => report::sarif(&scan, &mut out),
             }
             .and_then(|()| out.flush())
             .map_err(failed)?;
@@ -252,6 +282,20 @@ fn display(path: &Path) -> String {
     } else {
         text.into_owned()
     }
+}
+
+/// Reads a baseline file, at most as large as a graph file may be.
+fn read_baseline(path: &Path, limits: &Limits) -> Result<baseline::Baseline, Usage> {
+    let shown = display(path);
+    let bytes = read_capped(path, limits.graph_bytes)
+        .map_err(|e| Usage(format!("{shown}: {e}")))?
+        .ok_or_else(|| {
+            Usage(format!(
+                "{shown}: the baseline is over {} bytes",
+                thousands(limits.graph_bytes)
+            ))
+        })?;
+    baseline::parse(&bytes).map_err(|e| Usage(format!("{shown}: {e}")))
 }
 
 /// Reads at most `limit` bytes. `None` if the file is longer.
@@ -277,8 +321,8 @@ fn push_unique(roots: &mut Vec<PathBuf>, more: impl IntoIterator<Item = PathBuf>
 }
 
 /// Packages of all graphs, merged by ID and version, each with the folders
-/// to look in.
-type Wanted = BTreeMap<(String, String), (PackageRef, Vec<PathBuf>)>;
+/// to look in and the graph files that list it, with the line.
+type Wanted = BTreeMap<(String, String), (PackageRef, Vec<PathBuf>, Vec<(String, Option<u32>)>)>;
 
 fn scan(
     options: &ScanOptions,
@@ -300,9 +344,10 @@ fn scan(
             read_graph(&file, options, default_root, limits, &mut scan, &mut wanted)?;
         }
     }
-    for (package, roots) in wanted.into_values() {
-        scan.packages
-            .push(scan_graph_package(package, &roots, limits));
+    for (package, roots, listed) in wanted.into_values() {
+        let mut found = scan_graph_package(package, &roots, limits);
+        found.listed = listed;
+        scan.packages.push(found);
     }
     for file in nupkgs {
         scan.packages.push(scan_nupkg(&file, limits)?);
@@ -371,6 +416,7 @@ fn read_graph(
         return Ok(());
     };
     let graph = graph::parse(&bytes).map_err(|e| Usage(format!("{shown}: {e}")))?;
+    let lines = graph::entry_lines(&bytes);
     let mut roots: Vec<PathBuf> = options.packages_dir.iter().cloned().collect();
     let kind = match graph.kind {
         GraphKind::Lock => {
@@ -385,26 +431,28 @@ fn read_graph(
             InputKind::Assets(graph.format_version)
         }
     };
-    scan.inputs.push(Input {
-        path: shown,
-        kind: Some(kind),
-    });
     for package in graph.packages {
         let key = (
             package.id.lower().to_owned(),
             package.version.lower().to_owned(),
         );
+        let entry = (shown.clone(), lines.get(&key).copied());
         match wanted.get_mut(&key) {
-            Some((known, known_roots)) => {
+            Some((known, known_roots, listed)) => {
                 known.dependency = known.dependency.min(package.dependency);
                 known.frameworks.extend(package.frameworks);
                 push_unique(known_roots, roots.iter().cloned());
+                listed.push(entry);
             }
             None => {
-                wanted.insert(key, (package, roots.clone()));
+                wanted.insert(key, (package, roots.clone(), vec![entry]));
             }
         }
     }
+    scan.inputs.push(Input {
+        path: shown,
+        kind: Some(kind),
+    });
     Ok(())
 }
 
@@ -416,6 +464,7 @@ fn scan_graph_package(package: PackageRef, roots: &[PathBuf], limits: &Limits) -
         origin: Origin::Graph(package.dependency),
         frameworks: package.frameworks,
         source: None,
+        listed: Vec::new(),
         assets: Vec::new(),
         outcome: Outcome::default(),
     };
@@ -517,6 +566,7 @@ fn scan_nupkg(file: &Path, limits: &Limits) -> Result<PackageScan, Usage> {
         origin: Origin::Nupkg,
         frameworks: std::collections::BTreeSet::new(),
         source: Some(display(file)),
+        listed: vec![(display(file), None)],
         assets,
         outcome,
     })
@@ -577,6 +627,7 @@ fn scan_packages_dir(scan: &mut Scan, root: &Path, limits: &Limits) -> Result<()
             origin: Origin::PackagesDir,
             frameworks: std::collections::BTreeSet::new(),
             source: Some(display(&root.join(&id_name).join(&version_name))),
+            listed: vec![(display(&root.join(&id_name).join(&version_name)), None)],
             assets: Vec::new(),
             outcome: Outcome::default(),
         };
@@ -618,6 +669,8 @@ mod tests {
             format: Format::Json,
             output: None,
             fail_on: FailOn::Never,
+            baseline: None,
+            write_baseline: None,
         };
         let size = lock.len() as u64;
         let fits = scan(
@@ -644,6 +697,24 @@ mod tests {
     }
 
     #[test]
+    fn a_baseline_one_byte_over_the_graph_limit_is_a_usage_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let text = br#"{"schema": 1, "accepted": []}"#;
+        let path = dir.path().join("baseline.json");
+        std::fs::write(&path, text).unwrap();
+        let limits = |graph_bytes| Limits {
+            graph_bytes,
+            ..Limits::default()
+        };
+        let size = text.len() as u64;
+        assert!(read_baseline(&path, &limits(size)).is_ok());
+        let Err(Usage(message)) = read_baseline(&path, &limits(size - 1)) else {
+            panic!("a baseline over the limit was read");
+        };
+        assert!(message.contains("over"), "{message}");
+    }
+
+    #[test]
     fn the_explicit_packages_dir_is_searched_before_the_default_root() {
         let dir = tempfile::tempdir().unwrap();
         for root in ["explicit", "default"] {
@@ -663,6 +734,8 @@ mod tests {
             format: Format::Text,
             output: None,
             fail_on: FailOn::Never,
+            baseline: None,
+            write_baseline: None,
         };
         let result = scan(
             &options,

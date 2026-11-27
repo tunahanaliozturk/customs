@@ -54,11 +54,8 @@ fn rules_lists_only_the_rules_this_build_implements() -> TestResult {
 
 #[test]
 fn features_of_later_milestones_are_usage_errors_that_name_the_milestone() -> TestResult {
-    let cases: [(&[&str], &str); 6] = [
+    let cases: [(&[&str], &str); 3] = [
         (&["diff", "a.json", "b.json"], "M5"),
-        (&["scan", "x.json", "--baseline", "b.json"], "M4"),
-        (&["scan", "x.json", "--write-baseline", "b.json"], "M4"),
-        (&["scan", "x.json", "--format", "sarif"], "M4"),
         (&["scan", "x.json", "--verify-cache"], "M5"),
         (&["scan", "x.json", "--offline"], "M5"),
     ];
