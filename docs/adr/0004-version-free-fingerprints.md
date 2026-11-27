@@ -14,12 +14,12 @@ The options for what goes into a fingerprint:
 
 ## Decision
 
-Option 3. The fingerprint is the first 128 bits of SHA-256 over the rule ID, the lowercase package ID, the path inside the package and the evidence with runs of whitespace collapsed to one space, joined with a separator byte that cannot occur in any of them. Each rule defines its evidence: the `Command` attribute for `Exec`, the URL for C205, the base64 run for C206, the assembly path and body size for a module initialiser, the module and function name for a P/Invoke.
+Option 3. The fingerprint is the first 128 bits of SHA-256 over the rule ID, the lowercase package ID, the path inside the package and the evidence with runs of whitespace collapsed to one space, joined with a separator byte that cannot occur in any of them. Each rule defines its evidence: the `Command` attribute for `Exec`, the URL for C205, the base64 run for C206, the assembly path and body size for a module initialiser (since the M4 review also a hash of its IL), the module and function name for a P/Invoke.
 
 ## Consequences
 
 - A version bump that does not touch the relevant content keeps its findings accepted, and `diff` reports nothing for it.
-- A change to the command, the URL or the initialiser size shows up as a new finding, even in the same file at the same line.
+- A change to the command, the URL or the initialiser's IL shows up as a new finding, even in the same file at the same line.
 - Moving a construct to another file in the package shows up as new. That is noise in rare cases and is accepted.
 - Two identical `Exec` elements in one file share a fingerprint. They are reported once with a count. Accepting one accepts both, which is acceptable because they are identical.
 - Collapsing whitespace means reformatting a targets file does not re-report it. Changing quoting or casing does; that is deliberate, since case can matter on Linux.

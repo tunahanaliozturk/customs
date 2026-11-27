@@ -61,7 +61,7 @@ fn a_module_initialiser_in_a_library_is_a_warning() -> TestResult {
     let found = one(&report, "C301", "lib/net10.0/Contoso.Sample.dll")?;
     assert_eq!(found["severity"], "warning");
     assert_eq!(found["message"], "module initialiser");
-    assert_eq!(found["evidence"], "6 bytes of IL");
+    assert_eq!(found["evidence"], "6 bytes of IL, SHA-256 9fbd266112c0e99f");
     assert_eq!(found["line"], serde_json::Value::Null);
     assert_eq!(code, 1);
     assert!(
@@ -69,7 +69,7 @@ fn a_module_initialiser_in_a_library_is_a_warning() -> TestResult {
         "{text}"
     );
     assert!(
-        text.contains("lib/net10.0/Contoso.Sample.dll  6 bytes of IL"),
+        text.contains("lib/net10.0/Contoso.Sample.dll  6 bytes of IL, SHA-256 9fbd266112c0e99f"),
         "{text}"
     );
     Ok(())
@@ -82,7 +82,10 @@ fn a_module_initialiser_with_a_fat_method_header_is_read_through() -> TestResult
     let dll = assembly("FatInit.dll")?;
     let (_, report, _) = scan(&[("lib/net10.0/Contoso.Sample.dll", &dll)])?;
     let found = one(&report, "C301", "lib/net10.0/Contoso.Sample.dll")?;
-    assert_eq!(found["evidence"], "81 bytes of IL");
+    assert_eq!(
+        found["evidence"],
+        "81 bytes of IL, SHA-256 493965aa7679dddc"
+    );
     Ok(())
 }
 

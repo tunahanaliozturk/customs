@@ -13,10 +13,12 @@
 //! Metadata that readers could read differently is refused (ADR 0006).
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 
 use object::pe;
 use object::read::pe::{ImageNtHeaders, PeFile, SectionTable};
 use object::{FileKind, LittleEndian as LE};
+use sha2::{Digest, Sha256};
 
 use crate::inventory::{Asset, ManagedRole, NativeFormat};
 use crate::package::{Entry, Files, Limits, PackagePath, thousands};
@@ -37,6 +39,17 @@ enum Unreadable {
 }
 
 use Unreadable::Malformed;
+
+/// The first 64 bits of SHA-256, as 16 lowercase hexadecimal digits.
+fn short_hash(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .take(8)
+        .fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
+}
 
 /// Tables 0x00 to 0x2C of ECMA-335 partition II chapter 22. The portable
 /// PDB tables from 0x30 never appear in an assembly and are refused.
@@ -785,9 +798,9 @@ impl<'a> Assembly<'a> {
         })
     }
 
-    /// The size of the IL of a method body, from its tiny or fat header
+    /// The IL of a method body, its size from the tiny or fat header
     /// (II.25.4), if the body is there and fits in its section.
-    fn code_size(&self, method: u32) -> Result<Option<u32>, Unreadable> {
+    fn il(&self, method: u32) -> Result<Option<&[u8]>, Unreadable> {
         let rva = self.metadata.cell(METHOD_DEF, method, 0)?;
         if rva == 0 {
             return Ok(None);
@@ -803,10 +816,9 @@ impl<'a> Assembly<'a> {
             },
             _ => return Ok(None),
         };
-        let fits = size(code)
+        Ok(size(code)
             .checked_add(header)
-            .is_some_and(|end| end <= body.len());
-        Ok(fits.then_some(code))
+            .and_then(|end| body.get(header..end)))
     }
 
     /// The P/Invoke imports of methods: method row, mapping flags, import
@@ -839,8 +851,14 @@ impl<'a> Assembly<'a> {
             found
         };
         if let Some(method) = self.metadata.module_initializer()? {
-            let evidence = match self.code_size(method)? {
-                Some(code) => format!("{} bytes of IL", thousands(u64::from(code))),
+            // The size and the first 64 bits of SHA-256 over the IL, so
+            // that other IL of the same size is other evidence.
+            let evidence = match self.il(method)? {
+                Some(il) => format!(
+                    "{} bytes of IL, SHA-256 {}",
+                    thousands(il.len() as u64),
+                    short_hash(il)
+                ),
                 None => "no readable method body".to_owned(),
             };
             report.findings.push(finding(
@@ -1072,7 +1090,7 @@ mod tests {
         let limits = Limits::default();
         let facts = Assembly::read(bytes, &limits).and_then(|assembly| {
             let initializer = match assembly.metadata.module_initializer()? {
-                Some(method) => json!({ "code_size": assembly.code_size(method)? }),
+                Some(method) => json!({ "code_size": assembly.il(method)?.map(<[u8]>::len) }),
                 None => Value::Null,
             };
             Ok((
@@ -1866,7 +1884,7 @@ mod tests {
             assert_eq!(report.findings[0].rule, FindingRule::C301);
             report.findings[0].evidence.clone().unwrap()
         };
-        assert_eq!(evidence(&bytes), "6 bytes of IL");
+        assert_eq!(evidence(&bytes), "6 bytes of IL, SHA-256 9fbd266112c0e99f");
 
         let mut no_header = bytes.clone();
         no_header[at] = 0;
@@ -1880,6 +1898,27 @@ mod tests {
             .unwrap();
         nowhere[cell..cell + 4].copy_from_slice(&0x7000u32.to_le_bytes());
         assert_eq!(evidence(&nowhere), "no readable method body");
+    }
+
+    /// A body of the same size with other IL is other evidence, so a
+    /// baseline that accepted the initialiser reports the change (review of
+    /// M4, finding 4).
+    #[test]
+    fn a_module_initialiser_with_other_il_of_the_same_size_is_other_evidence() {
+        let bytes = fixture("ModuleInit.dll");
+        let assembly = Assembly::read(&bytes, &Limits::default()).unwrap();
+        let method = assembly.metadata.module_initializer().unwrap().unwrap();
+        let rva = assembly.metadata.cell(METHOD_DEF, method, 0).unwrap();
+        let body = assembly.sections.pe_data_at(bytes.as_slice(), rva).unwrap();
+        let at = body.as_ptr() as usize - bytes.as_ptr() as usize;
+        let evidence = |bytes: &[u8]| read_and_check(bytes).unwrap().findings[0].evidence.clone();
+        let mut changed = bytes.clone();
+        // The first IL byte, after the one-byte tiny header.
+        changed[at + 1] ^= 0x01;
+        let (before, after) = (evidence(&bytes).unwrap(), evidence(&changed).unwrap());
+        assert!(before.starts_with("6 bytes of IL"), "{before}");
+        assert!(after.starts_with("6 bytes of IL"), "{after}");
+        assert_ne!(before, after);
     }
 
     /// Native code is a CLI directory whose address is zero, whatever its
